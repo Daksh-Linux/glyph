@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="glyph" />
+<meta name="theme-color" content="#16161d" />
+<meta name="color-scheme" content="dark" />
+<!-- PWA manifest — tells Chrome/Android how to install glyph as a standalone app -->
+<link rel="manifest" href="/manifest.json" />
+<!-- iOS home screen icon — Safari uses this when you "Add to Home Screen" -->
+<link rel="apple-touch-icon" href="/icons/192.png" />
+<title>glyph</title>
+<style>
+:root{
+  --ink:#16161d; --surface:#1f1f28; --panel:#22222c; --line:#34343f; --line2:#2a2a35;
+  --text:#dcd7ba; --dim:#7a7a8c; --faint:#4a4a57;
+  --blue:#7e9cd8; --green:#98bb6c; --yellow:#e6c384; --red:#e46876; --mauve:#957fb8;
+  --mono: ui-monospace,'JetBrains Mono','SFMono-Regular','Cascadia Code',Menlo,Consolas,'Liberation Mono',monospace;
+  color-scheme: dark; /* tells Android Chrome this is already a dark theme — prevents forced-dark from mangling our colors */
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  background:var(--surface); color:var(--text);
+  font-family:var(--mono); font-size:14px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+.app{position:fixed; inset:0; display:flex; flex-direction:column}
+.spacer{flex:1}
+button{font-family:var(--mono); cursor:pointer; color:inherit; background:none; border:none}
+button:focus-visible, textarea:focus-visible{outline:2px solid var(--blue); outline-offset:1px}
+svg{display:block}
+
+/* top bar */
+/* env(safe-area-inset-top) is the iOS status bar height — adding it as padding pushes our
+   buttons below the status bar while the same ink colour fills behind it, making it invisible */
+.bar{display:flex; align-items:center; gap:10px;
+  height:calc(42px + env(safe-area-inset-top)); padding:env(safe-area-inset-top) 10px 0;
+  background:var(--ink); border-bottom:1px solid var(--line); flex:0 0 auto}
+.prompt{white-space:nowrap}
+.user{color:var(--green)} .path{color:var(--blue)} .sig{color:var(--mauve)}
+.file{opacity:.85; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:34vw}
+.bar .tab{font-size:13px; padding:5px 10px; border:1px solid var(--line); border-radius:5px; color:var(--dim); white-space:nowrap}
+.bar .tab .key{color:var(--mauve)}
+.bar .tab.on{color:var(--text); border-color:var(--blue); background:#20283b}
+.bar .tab.on .key{color:var(--blue)}
+.iconbtn{display:flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:5px; color:var(--dim)}
+.iconbtn:hover{color:var(--text); background:var(--panel)}
+.only-mobile{display:none}
+
+/* body */
+.body{flex:1; display:flex; min-height:0; position:relative}
+
+/* sidebar */
+.side{width:236px; flex:0 0 auto; background:var(--ink);
+  border-right:1px solid var(--line); display:flex; flex-direction:column; min-height:0}
+.side-head{display:flex; align-items:center; justify-content:space-between;
+  padding:10px 12px 8px; color:var(--dim); font-size:12px; letter-spacing:.5px;
+  border-bottom:1px solid var(--line2)}
+.list{list-style:none; margin:0; padding:6px; overflow-y:auto; flex:1}
+.row{display:flex; align-items:center; gap:7px; padding:6px 8px; border-radius:5px; color:var(--text); cursor:pointer}
+.row:hover{background:var(--panel)}
+.row.sel{background:#20283b}
+.tree-tog{color:var(--dim); font-size:11px; padding:0; line-height:1; flex:0 0 12px; text-align:center; width:12px}
+.tree-tog:hover{color:var(--blue)}
+.tree-leaf{color:var(--blue); width:12px; text-align:center; white-space:pre; font-size:11px; flex:0 0 12px}
+.row .name{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.row.sel .name{color:#fff}
+.row .ink{color:var(--yellow); font-size:11px}
+.addchild{opacity:0; color:var(--dim); font-size:13px; padding:1px 4px; border-radius:4px; line-height:1}
+.row:hover .addchild{opacity:.6}
+.addchild:hover{opacity:1!important; color:var(--green)}
+.row .del{opacity:0; color:var(--dim); display:flex; padding:2px; border-radius:4px}
+.row:hover .del{opacity:.7}
+.row .del:hover{opacity:1; color:var(--red)}
+.newrow{padding:9px 12px; text-align:left; width:100%; color:var(--dim); border-top:1px solid var(--line2)}
+.newrow:hover{color:var(--green)}
+.scrim{display:none}
+[hidden]{display:none!important} /* author CSS can override UA [hidden]; this prevents that */
+
+/* main */
+.main{flex:1; min-width:0; display:flex; flex-direction:column}
+.editor{flex:1; width:100%; resize:none; border:none; outline:none; box-shadow:none; padding:22px clamp(16px,5vw,64px);
+  background:var(--surface); color:var(--text); font-family:var(--mono);
+  font-size:16px; line-height:1.7; tab-size:2; box-sizing:border-box;
+  user-select:text; -webkit-user-select:text;
+  -webkit-tap-highlight-color:transparent; -webkit-appearance:none; appearance:none;}
+.editor:focus{outline:none; box-shadow:none; border:none;}
+.editor::placeholder{color:var(--faint)}
+.empty{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; color:var(--dim)}
+
+/* draw */
+.drawwrap{flex:1; display:flex; flex-direction:column; min-height:0}
+.drawbar{display:flex; align-items:center; gap:10px; padding:8px 12px; flex-wrap:wrap;
+  background:var(--ink); border-bottom:1px solid var(--line2)}
+.swatches{display:flex; gap:6px}
+.sw{width:20px; height:20px; border-radius:50%; border:2px solid transparent; padding:0}
+.sw.on{border-color:var(--text); box-shadow:0 0 0 2px var(--surface) inset}
+.sizes{display:flex; gap:4px}
+.szbtn{font-size:12px; padding:4px 8px; border-radius:5px; color:var(--dim); border:1px solid var(--line)}
+.szbtn.on{color:var(--text); border-color:var(--blue); background:#20283b}
+.toggle{font-size:12px; padding:4px 9px; border-radius:5px; border:1px solid var(--line); color:var(--dim)}
+.toggle.on{color:var(--ink); background:var(--green); border-color:var(--green)}
+/* canvas-scroll scrolls vertically only */
+.canvas-scroll{flex:1; overflow-x:hidden; overflow-y:auto;}
+/* canvas-wrap holds two stacked canvases — base (committed strokes) and live (current stroke only) */
+.canvas-wrap{position:relative;}
+.canvas{display:block; touch-action:none; cursor:crosshair;
+  background:radial-gradient(circle at 1px 1px, var(--line2) 1px, transparent 0) 0 0/22px 22px, var(--surface)}
+/* live canvas sits on top of base, intercepts no pointer events — JS handles those on the base */
+.cv-live{position:absolute; top:0; left:0; pointer-events:none;}
+.ghost{padding:7px 14px; border:1px solid var(--line); border-radius:6px; color:var(--text)}
+.ghost:hover{border-color:var(--blue); background:#20283b}
+.ghost.sm{padding:4px 10px; font-size:12px}
+
+/* statusline */
+.status{display:flex; align-items:center; height:28px; flex:0 0 auto;
+  background:var(--ink); border-top:1px solid var(--line); font-size:12px}
+.mode{padding:0 12px; height:100%; display:flex; align-items:center; font-weight:600; letter-spacing:1px; color:var(--ink)}
+.m-normal{background:var(--blue)} .m-insert{background:var(--green)} .m-draw{background:var(--yellow)}
+.seg{padding:0 12px; display:flex; align-items:center; gap:6px; border-right:1px solid var(--line2)}
+.seg.fname{color:var(--text)} .seg.dim{color:var(--dim)}
+.seg.sync{border-right:none; border-left:1px solid var(--line2)}
+.led{width:7px; height:7px; border-radius:50%; display:inline-block}
+.led-g{background:var(--green)} .led-y{background:var(--yellow); animation:pulse 1s infinite} .led-r{background:var(--red)}
+.cursor{padding:0 10px; color:var(--blue); animation:blink 1.05s steps(1) infinite}
+
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+@media (max-width:760px){
+  .only-mobile{display:flex}
+  .file{display:none}
+  .hide-sm{display:none}
+  .side{position:absolute; z-index:20; top:0; bottom:0; left:0; width:80%; max-width:300px;
+    transform:translateX(-102%); transition:transform .18s ease; box-shadow:2px 0 24px rgba(0,0,0,.5)}
+  .side.open{transform:translateX(0)}
+  .scrim{display:block; position:absolute; inset:0; z-index:10; background:rgba(0,0,0,.45)}
+  .bar .tab{padding:5px 9px}
+}
+@media (prefers-reduced-motion:reduce){
+  .cursor,.led-y{animation:none}
+  .side{transition:none}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="bar" id="bar"></header>
+  <div class="body">
+    <aside class="side" id="side"></aside>
+    <div class="scrim" id="scrim" hidden></div>
+    <main class="main" id="main"></main>
+  </div>
+  <footer class="status" id="status"></footer>
+</div>
+
+<script>
+"use strict";
+const $ = (s) => document.querySelector(s);
+const uid = () => Math.random().toString(36).slice(2, 9);
+const esc = (s) => (s || "").replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+const PENS = [
+  { name: "paper", c: "#dcd7ba" }, { name: "wave", c: "#7e9cd8" },
+  { name: "spring", c: "#98bb6c" }, { name: "carp", c: "#e6c384" },
+  { name: "peony", c: "#e46876" }, { name: "wisteria", c: "#957fb8" },
+];
+const SIZES = [{ l: "fine", v: 2 }, { l: "med", v: 3.5 }, { l: "bold", v: 6 }];
+// eraser gets its own bigger sizes — small/med/large map to 10/22/44 pixels
+const ERASER_SIZES = [{ l: "sm", v: 10 }, { l: "md", v: 22 }, { l: "lg", v: 44 }];
+
+const ICONS = {
+  menu: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>',
+  plus: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  trash: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>',
+  x: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+};
+
+/* ---- state ---- */
+let notes = [];        // [{id,title,updated,hasInk,parent}]
+let activeId = null;
+let expanded = new Set(); // note IDs whose children are visible in the sidebar
+let active = null;     // full note {id,title,body,strokes,updated}
+let mode = "normal";   // normal | insert | draw
+let penIdx = 1, sizeIdx = 1, eraserSizeIdx = 1, penOnly = false, penSeen = false, erasing = false; // erasing = are we in eraser mode right now
+let saveStatus = "saved";
+let saveTimer = null;
+let lastTyped = 0; // timestamp of last local keystroke — used to avoid clobbering in-progress typing during sync
+
+/* in-progress drawing */
+let drawing = false, cur = null;
+let fingerY = null;       // tracks finger Y for manual scroll
+let scrollVel = 0;        // momentum velocity in pixels — decays after finger lifts
+let scrollEl = null;      // the .canvas-scroll element we're scrolling
+let scrollRaf = null;     // requestAnimationFrame id for the momentum loop
+let liveRaf = null;       // pending rAF for live canvas draw — ensures max one draw per display frame
+
+/* ---- local cache (offline support) ---- */
+let online = true;
+
+const LC = {
+  get: (k) => { try { const s = localStorage.getItem(k); return s ? JSON.parse(s) : null; } catch(e) { return null; } },
+  set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e) {} },
+  del: (k) => { try { localStorage.removeItem(k); } catch(e) {} }
+};
+
+function lcSaveNote(note) { LC.set("glyph:n:" + note.id, note); }
+function lcLoadNote(id) { return LC.get("glyph:n:" + id); }
+function lcSaveList(arr) { LC.set("glyph:list", arr.map(n => ({ id:n.id, title:n.title, updated:n.updated, parent:n.parent||null }))); }
+function lcLoadList() { return LC.get("glyph:list") || []; }
+
+function lcPending() { return new Set(LC.get("glyph:pending") || []); }
+function lcMarkPending(id) { const p = lcPending(); p.add(id); LC.set("glyph:pending", [...p]); }
+function lcClearPending(id) { const p = lcPending(); p.delete(id); LC.set("glyph:pending", [...p]); }
+
+function setOnline(val) {
+  if (online === val) return;
+  online = val;
+  renderStatus();
+  if (online) syncPending(); // server just came back — flush local changes
+}
+
+async function syncPending() {
+  const ids = lcPending();
+  for (const id of ids) {
+    const note = lcLoadNote(id);
+    if (!note) { lcClearPending(id); continue; }
+    try {
+      const saved = await api("PUT", "/api/notes/" + encodeURIComponent(id),
+        { title: note.title, body: note.body, strokes: note.strokes || [], parent: note.parent || null });
+      lcSaveNote({ ...note, updated: saved.updated });
+      lcClearPending(id);
+      if (active && active.id === id) { active.updated = saved.updated; }
+    } catch(e) { break; } // still offline — stop trying
+  }
+  if (lcPending().size === 0) { saveStatus = "saved"; renderStatus(); loadList(); }
+}
+
+/* ---- api ---- */
+async function api(method, path, body) {
+  const opts = { method, headers: {} };
+  if (body !== undefined) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
+  const res = await fetch(path, opts);
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  return res.status === 204 ? null : res.json();
+}
+
+async function loadList() {
+  try {
+    notes = await api("GET", "/api/notes");
+    lcSaveList(notes);
+    setOnline(true);
+    renderList();
+  } catch(e) {
+    setOnline(false);
+    // load from cache so sidebar stays populated
+    const cached = lcLoadList();
+    if (cached.length && !notes.length) { notes = cached; renderList(); }
+  }
+}
+
+async function openNote(id) {
+  try {
+    active = await api("GET", "/api/notes/" + encodeURIComponent(id));
+    active.strokes = active.strokes || [];
+    lcSaveNote(active); // keep cache fresh
+    setOnline(true);
+  } catch(e) {
+    // server down — load from local cache
+    const cached = lcLoadNote(id);
+    if (!cached) throw e; // nothing cached, can't open
+    active = { ...cached, strokes: cached.strokes || [] };
+    setOnline(false);
+  }
+  activeId = active.id;
+  if (mode === "draw") mode = "normal";
+  renderMain(); renderBar(); renderList(); renderStatus();
+}
+
+function scheduleSave() {
+  if (!active) return;
+  // write to local cache immediately — data is never lost even if server is down
+  lcSaveNote(active);
+  lcMarkPending(active.id);
+  saveStatus = "saving"; renderStatus();
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try {
+      const saved = await api("PUT", "/api/notes/" + encodeURIComponent(active.id),
+        { title: active.title, body: active.body, strokes: active.strokes || [], parent: active.parent || null });
+      active.id = saved.id; activeId = saved.id; active.title = saved.title; active.updated = saved.updated;
+      lcSaveNote(active); lcClearPending(active.id);
+      saveStatus = "saved"; setOnline(true); renderStatus(); renderBar();
+      loadList();
+    } catch(e) {
+      setOnline(false);
+      saveStatus = "offline"; renderStatus(); // show as offline, not error
+    }
+  }, 650);
+}
+
+async function newNote(parentId) {
+  parentId = parentId || null;
+  const id = uid();
+  active = { id, title: "untitled", body: "", strokes: [], updated: Date.now(), parent: parentId };
+  activeId = id;
+  mode = "insert";
+  lcSaveNote(active); lcMarkPending(id);
+  // add to local list so sidebar shows it immediately even if offline
+  notes = [{ id, title: "untitled", updated: active.updated, parent: parentId }, ...notes];
+  if (parentId) expanded.add(parentId); // open the parent so the new child is visible
+  try { await api("PUT", "/api/notes/" + id, { title: "untitled", body: "", strokes: [], parent: parentId }); lcClearPending(id); } catch(e) { setOnline(false); }
+  await loadList();
+  renderMain(); renderBar(); renderStatus(); closeSidebar();
+  focusEditor();
+}
+
+async function removeNote(id) {
+  try { await api("DELETE", "/api/notes/" + encodeURIComponent(id)); } catch (e) {}
+  if (id === activeId) { active = null; activeId = null; }
+  await loadList();
+  if (!activeId && notes[0]) { await openNote(notes[0].id); }
+  else { renderMain(); renderBar(); renderStatus(); }
+}
+
+/* ---- render: bar ---- */
+function renderBar() {
+  $("#bar").innerHTML =
+    '<button class="iconbtn only-mobile" id="menuBtn" aria-label="Notes">' + ICONS.menu + '</button>' +
+    '<span class="prompt"><span class="user">daksh@arch</span><span class="path"> ~/notes </span><span class="sig">&#10095;</span></span>' +
+    '<span class="file">' + (active ? esc(active.title) : "&mdash;") + '</span>' +
+    '<div class="spacer"></div>' +
+    '<button class="tab ' + (mode === "insert" ? "on" : "") + '" id="tabI"><span class="key">i</span>nsert</button>' +
+    '<button class="tab ' + (mode === "draw" ? "on" : "") + '" id="tabD"><span class="key">d</span>raw</button>' +
+    '<button class="iconbtn" id="newBtn" aria-label="New note" title="New note (o)">' + ICONS.plus + '</button>';
+  $("#menuBtn").onclick = openSidebar;
+  $("#tabI").onclick = () => { if (active) { mode = "insert"; renderMain(); renderBar(); renderStatus(); focusEditor(); } };
+  $("#tabD").onclick = () => { if (active) { mode = "draw"; renderMain(); renderBar(); renderStatus(); } };
+  $("#newBtn").onclick = () => newNote();
+}
+
+/* ---- render: sidebar (tree) ---- */
+
+// builds a nested tree from the flat notes array using the parent field
+function buildTree(notes) {
+  const byId = {};
+  notes.forEach(n => { byId[n.id] = { ...n, children: [] }; });
+  const roots = [];
+  notes.forEach(n => {
+    if (n.parent && byId[n.parent]) byId[n.parent].children.push(byId[n.id]);
+    else roots.push(byId[n.id]);
+  });
+  const sort = arr => { arr.sort((a, b) => b.updated - a.updated); arr.forEach(n => sort(n.children)); };
+  sort(roots);
+  return roots;
+}
+
+// walk up the ancestor chain and add each ancestor to expanded so the active note is visible
+function expandToActive() {
+  if (!activeId) return;
+  const parentOf = {};
+  notes.forEach(n => { if (n.parent) parentOf[n.id] = n.parent; });
+  let id = activeId;
+  while (parentOf[id]) { id = parentOf[id]; expanded.add(id); }
+}
+
+// recursively renders tree nodes as <li> elements; depth controls the left indent
+function renderTreeNodes(nodes, depth) {
+  return nodes.map(n => {
+    const sel = n.id === activeId;
+    const hasKids = n.children.length > 0;
+    const isOpen = expanded.has(n.id);
+    const pl = 8 + depth * 14; // 14px per level
+    // nodes with children get an expand/collapse triangle; leaves get a fixed-width spacer (active ones show \u25B8)
+    const toggle = hasKids
+      ? '<button class="tree-tog" data-tog="' + esc(n.id) + '">' + (isOpen ? "\u25BE" : "\u25B8") + "</button>"
+      : '<span class="tree-leaf">' + (sel ? "\u25B8" : " ") + "</span>";
+    return (
+      '<li class="row' + (sel ? " sel" : "") + '" data-id="' + esc(n.id) + '" style="padding-left:' + pl + 'px">' +
+        toggle +
+        '<span class="name">' + esc(n.title || "untitled") + "</span>" +
+        (n.hasInk ? '<span class="ink" title="has a sketch">\u2726</span>' : "") +
+        '<button class="addchild" data-par="' + esc(n.id) + '" aria-label="New child note" title="New child note">+</button>' +
+        '<button class="del" data-del="' + esc(n.id) + '" aria-label="Delete note">' + ICONS.trash + "</button>" +
+      "</li>" +
+      (hasKids && isOpen ? renderTreeNodes(n.children, depth + 1) : "")
+    );
+  }).join("");
+}
+
+function toggleExpand(id) {
+  if (expanded.has(id)) expanded.delete(id); else expanded.add(id);
+  renderList();
+}
+
+function renderList() {
+  expandToActive();
+  const rows = renderTreeNodes(buildTree(notes), 0);
+  $("#side").innerHTML =
+    '<div class="side-head"><span>ls ~/notes</span>' +
+    '<button class="iconbtn only-mobile" id="closeSide" aria-label="Close">' + ICONS.x + "</button></div>" +
+    '<ul class="list">' + (rows || '<li class="row"><span class="name" style="color:var(--dim)">empty vault</span></li>') + "</ul>" +
+    '<button class="newrow" id="newRow">+ new note</button>';
+  // single delegated listener handles all interactions in the tree
+  $("#side").querySelector(".list").addEventListener("click", (e) => {
+    const tog = e.target.closest("[data-tog]");
+    const del = e.target.closest("[data-del]");
+    const par = e.target.closest("[data-par]");
+    const row = e.target.closest(".row[data-id]");
+    if (del) { e.stopPropagation(); removeNote(del.getAttribute("data-del")); return; }
+    if (par) { e.stopPropagation(); newNote(par.getAttribute("data-par")); return; }
+    if (tog) { e.stopPropagation(); toggleExpand(tog.getAttribute("data-tog")); return; }
+    if (row) { openNote(row.getAttribute("data-id")); closeSidebar(); }
+  });
+  $("#newRow").onclick = () => newNote();
+  const cs = $("#closeSide"); if (cs) cs.onclick = closeSidebar;
+}
+
+function openSidebar() { $("#side").classList.add("open"); $("#scrim").hidden = false; }
+function closeSidebar() { $("#side").classList.remove("open"); $("#scrim").hidden = true; }
+
+/* ---- render: main ---- */
+function renderMain() {
+  const main = $("#main");
+  if (!active) {
+    main.innerHTML = '<div class="empty"><p>no note open.</p><button class="ghost" id="emptyNew">+ new note</button></div>';
+    $("#emptyNew").onclick = () => newNote();
+    return;
+  }
+  if (mode === "draw") {
+    main.innerHTML =
+      '<div class="drawwrap" id="drawwrap"><div class="drawbar">' +
+        '<div class="swatches" id="sw"></div>' +
+        '<div class="sizes" id="sz"></div>' +
+        '<div class="spacer"></div>' +
+        // eraser toggle button — "on" class makes it turn green (same style as pen-only)
+        '<button class="toggle ' + (erasing ? "on" : "") + '" id="eraser">eraser ' + (erasing ? "on" : "off") + '</button>' +
+        '<button class="toggle ' + (penOnly ? "on" : "") + '" id="penonly" title="Ignore finger and palm, pencil only">pen-only ' + (penOnly ? "on" : "off") + '</button>' +
+        '<button class="ghost sm" id="undo">undo</button>' +
+        '<button class="ghost sm" id="clear">clear</button>' +
+      // base canvas (#cv) holds all committed strokes; live canvas (#cvlive) holds only the stroke being drawn right now
+      // splitting them means we never redraw old strokes while the pen is moving — massive latency reduction
+      '</div><div class="canvas-scroll"><div class="canvas-wrap" id="cvwrap"><canvas class="canvas" id="cv"></canvas><canvas class="cv-live" id="cvlive"></canvas></div></div></div>';
+    buildDrawControls();
+    requestAnimationFrame(setupCanvas);
+  } else {
+    // plain textarea filling the main area — simplest setup so Android tap-to-focus works
+    main.innerHTML = '<textarea class="editor" id="ed" spellcheck="false" placeholder="# start writing\u2026"></textarea>';
+    const ed = $("#ed");
+    ed.value = active.body;
+
+    ed.addEventListener("input", () => { active.body = ed.value; lastTyped = Date.now(); scheduleSave(); });
+
+    ed.addEventListener("blur", () => {
+      const first = (active.body.split("\n")[0] || "").replace(/^#+\s*/, "").trim().slice(0, 40);
+      if (first && first !== active.title) { active.title = first; scheduleSave(); }
+    });
+
+    // update mode when textarea is focused — defer DOM changes so they don't block the keyboard on Android
+    ed.addEventListener("focus", () => {
+      if (mode !== "insert") {
+        mode = "insert";
+        setTimeout(() => { renderBar(); renderStatus(); }, 100);
+      }
+    });
+
+    if (mode === "insert") focusEditor();
+  }
+}
+
+function focusEditor() { const ed = $("#ed"); if (ed) ed.focus(); }
+
+function buildDrawControls() {
+  $("#sw").innerHTML = PENS.map((p, i) =>
+    '<button class="sw ' + (i === penIdx ? "on" : "") + '" data-i="' + i + '" style="background:' + p.c + '" title="' + p.name + '" aria-label="' + p.name + '"></button>').join("");
+  renderSizes(); // draws pen or eraser sizes depending on current mode
+  $("#sw").querySelectorAll(".sw").forEach((el) => {
+    el.onclick = () => {
+      penIdx = +el.getAttribute("data-i");
+      erasing = false; // picking a colour automatically turns eraser off
+      updateEraser();
+      $("#sw").querySelectorAll(".sw").forEach((x, j) => x.classList.toggle("on", j === penIdx));
+    };
+  });
+  $("#eraser").onclick = () => { erasing = !erasing; updateEraser(); }; // toggle eraser on/off
+  $("#penonly").onclick = () => { penOnly = !penOnly; updatePenOnly(); };
+  $("#undo").onclick = () => { if (!active) return; active.strokes = (active.strokes || []).slice(0, -1); redraw(); scheduleSave(); };
+  $("#clear").onclick = () => { if (!active) return; active.strokes = []; redraw(); scheduleSave(); };
+
+  const cv = $("#cv");
+  cv.addEventListener("pointerdown", down);
+  cv.addEventListener("pointermove", move);
+  cv.addEventListener("pointerup", up);
+  cv.addEventListener("pointerleave", up);
+  cv.addEventListener("pointercancel", up);
+  updateTouchAction(); // set correct touch-action right away based on current pen-only state
+}
+
+function updatePenOnly() {
+  const b = $("#penonly"); if (!b) return;
+  b.classList.toggle("on", penOnly);
+  b.textContent = "pen-only " + (penOnly ? "on" : "off");
+  updateTouchAction();
+}
+
+function updateTouchAction() {
+  // touch-action is always "none" (set in CSS) — we handle everything in JS
+  // finger scrolling is done manually in move() so the pen never triggers scroll
+}
+
+function updateEraser() {
+  const b = $("#eraser"); if (!b) return;
+  b.classList.toggle("on", erasing); // green when on, grey when off
+  b.textContent = "eraser " + (erasing ? "on" : "off");
+  renderSizes(); // swap in the right size buttons for the current mode
+}
+
+// renders pen sizes or eraser sizes into the #sz div depending on which mode is active
+function renderSizes() {
+  const sz = $("#sz"); if (!sz) return;
+  if (erasing) {
+    // show eraser sizes: sm / md / lg
+    sz.innerHTML = ERASER_SIZES.map((s, i) =>
+      '<button class="szbtn ' + (i === eraserSizeIdx ? "on" : "") + '" data-ei="' + i + '">' + s.l + '</button>').join("");
+    sz.querySelectorAll(".szbtn").forEach((el) => {
+      el.onclick = () => { eraserSizeIdx = +el.getAttribute("data-ei"); sz.querySelectorAll(".szbtn").forEach((x, j) => x.classList.toggle("on", j === eraserSizeIdx)); };
+    });
+  } else {
+    // show pen sizes: fine / med / bold
+    sz.innerHTML = SIZES.map((s, i) =>
+      '<button class="szbtn ' + (i === sizeIdx ? "on" : "") + '" data-i="' + i + '">' + s.l + '</button>').join("");
+    sz.querySelectorAll(".szbtn").forEach((el) => {
+      el.onclick = () => { sizeIdx = +el.getAttribute("data-i"); sz.querySelectorAll(".szbtn").forEach((x, j) => x.classList.toggle("on", j === sizeIdx)); };
+    });
+  }
+}
+
+/* ---- canvas ---- */
+function setupCanvas() {
+  const cv = $("#cv"), cvlive = $("#cvlive"); if (!cv) return;
+  const scroll = cv.closest(".canvas-scroll");
+  const dpr = window.devicePixelRatio || 1;
+  const W = scroll ? scroll.clientWidth : window.innerWidth;
+  const H = 2200;
+  // size both canvases identically — they sit on top of each other inside .canvas-wrap
+  for (const c of [cv, cvlive]) {
+    c.style.width  = W + "px";
+    c.style.height = H + "px";
+    c.width  = Math.round(W * dpr);
+    c.height = Math.round(H * dpr);
+    const ctx = c.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // 1 unit = 1 CSS pixel on retina
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+  }
+  // give canvas-wrap an explicit size so the scroll container knows how tall the content is
+  const wrap = $("#cvwrap");
+  if (wrap) { wrap.style.width = W + "px"; wrap.style.height = H + "px"; }
+  redraw();
+}
+
+// draws a single stroke object onto any canvas context using bezier smoothing
+function drawStroke(ctx, s) {
+  const pts = s.points;
+  if (!pts || !pts.length) return;
+  ctx.globalCompositeOperation = s.erase ? "destination-out" : "source-over";
+  ctx.strokeStyle = s.erase ? "rgba(0,0,0,1)" : s.color;
+  ctx.fillStyle   = s.erase ? "rgba(0,0,0,1)" : s.color;
+  if (pts.length === 1) {
+    ctx.beginPath();
+    ctx.arc(pts[0].x, pts[0].y, (s.size * (0.5 + pts[0].p)) / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalCompositeOperation = "source-over";
+    return;
+  }
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i];
+    const sx = i === 1 ? a.x : (pts[i - 2].x + a.x) / 2;
+    const sy = i === 1 ? a.y : (pts[i - 2].y + a.y) / 2;
+    const ex = (a.x + b.x) / 2, ey = (a.y + b.y) / 2;
+    ctx.lineWidth = s.size * (0.45 + 0.9 * ((a.p + b.p) / 2));
+    ctx.beginPath(); ctx.moveTo(sx, sy);
+    ctx.quadraticCurveTo(a.x, a.y, ex, ey);
+    ctx.stroke();
+  }
+  const last = pts[pts.length - 1], prev = pts[pts.length - 2];
+  ctx.lineWidth = s.size * (0.45 + 0.9 * last.p);
+  ctx.beginPath();
+  ctx.moveTo((prev.x + last.x) / 2, (prev.y + last.y) / 2);
+  ctx.lineTo(last.x, last.y);
+  ctx.stroke();
+  ctx.globalCompositeOperation = "source-over";
+}
+
+// redraws ALL committed strokes onto the base canvas — called on load, undo, clear, and stroke commit
+// never called while the pen is moving so it doesn't matter how slow it is
+function redraw() {
+  const cv = $("#cv"); if (!cv) return;
+  const ctx = cv.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  ctx.clearRect(0, 0, cv.width / dpr, cv.height / dpr);
+  for (const s of (active ? active.strokes || [] : [])) drawStroke(ctx, s);
+}
+
+// draws only the current live stroke onto the top canvas — called on every pointer move via rAF
+// because the base canvas is untouched, this is cheap regardless of how many strokes exist
+function drawLive() {
+  liveRaf = null;
+  const cvlive = $("#cvlive"); if (!cvlive) return;
+  const ctx = cvlive.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  ctx.clearRect(0, 0, cvlive.width / dpr, cvlive.height / dpr);
+  if (cur) drawStroke(ctx, cur);
+}
+
+function clearLive() {
+  const cvlive = $("#cvlive"); if (!cvlive) return;
+  const ctx = cvlive.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  ctx.clearRect(0, 0, cvlive.width / dpr, cvlive.height / dpr);
+}
+
+function ptFrom(e) {
+  const rect = $("#cv").getBoundingClientRect();
+  return { x: e.clientX - rect.left, y: e.clientY - rect.top, p: (e.pressure && e.pressure > 0) ? e.pressure : 0.5 };
+}
+const blocked = (e) => penOnly && e.pointerType === "touch";
+
+function down(e) {
+  if (e.pointerType === "pen" && !penSeen) { penSeen = true; penOnly = true; updatePenOnly(); }
+  if (blocked(e)) {
+    // finger down → stop any existing momentum and start fresh scroll tracking
+    if (scrollRaf) { cancelAnimationFrame(scrollRaf); scrollRaf = null; }
+    fingerY = e.clientY;
+    scrollVel = 0;
+    scrollEl = document.querySelector(".canvas-scroll");
+    return;
+  }
+  e.preventDefault();
+  $("#cv").setPointerCapture(e.pointerId);
+  drawing = true;
+  // pick size from eraser sizes or pen sizes depending on current mode
+  const strokeSize = erasing ? ERASER_SIZES[eraserSizeIdx].v : SIZES[sizeIdx].v;
+  cur = { erase: erasing, color: PENS[penIdx].c, size: strokeSize, points: [ptFrom(e)] };
+  clearLive(); // start the live canvas fresh for this stroke
+}
+function move(e) {
+  if (blocked(e)) {
+    if (fingerY !== null && scrollEl) {
+      scrollVel = fingerY - e.clientY;
+      scrollEl.scrollTop += scrollVel;
+      fingerY = e.clientY;
+    }
+    return;
+  }
+  if (!drawing) return;
+  e.preventDefault();
+  const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+  const rect = $("#cv").getBoundingClientRect();
+  for (const ev of evs) {
+    // raw point — no smoothing here, bezier curves in drawStroke handle visual smoothness without adding lag
+    cur.points.push({ x: ev.clientX - rect.left, y: ev.clientY - rect.top, p: (ev.pressure && ev.pressure > 0) ? ev.pressure : 0.5 });
+  }
+  // schedule one draw per display frame — if move fires faster than the screen refreshes, extra events are batched
+  if (!liveRaf) liveRaf = requestAnimationFrame(drawLive);
+}
+function momentum() {
+  if (!scrollEl || Math.abs(scrollVel) < 0.5) { scrollVel = 0; return; }
+  scrollEl.scrollTop += scrollVel;
+  scrollVel *= 0.88; // decay — 0.88 gives a natural glide that stops in about half a second
+  scrollRaf = requestAnimationFrame(momentum);
+}
+
+function up() {
+  if (fingerY !== null) {
+    fingerY = null;
+    if (Math.abs(scrollVel) > 1) scrollRaf = requestAnimationFrame(momentum); // kick off momentum glide
+    return;
+  }
+  if (!drawing) return;
+  drawing = false;
+  if (liveRaf) { cancelAnimationFrame(liveRaf); liveRaf = null; }
+  if (cur && cur.points.length) { active.strokes = (active.strokes || []).concat([cur]); scheduleSave(); }
+  cur = null;
+  redraw();    // bake the committed stroke into the base canvas
+  clearLive(); // wipe the live canvas — stroke is now on the base
+}
+
+window.addEventListener("resize", () => { if (mode === "draw") setupCanvas(); });
+window.addEventListener("orientationchange", () => { if (mode === "draw") setTimeout(setupCanvas, 200); });
+
+/* ---- render: statusline ---- */
+function renderStatus() {
+  const meta = { normal: ["NORMAL", "m-normal"], insert: ["INSERT", "m-insert"], draw: ["DRAW", "m-draw"] }[mode];
+  const words = active && active.body.trim() ? active.body.trim().split(/\s+/).length : 0;
+  const chars = active ? active.body.length : 0;
+  let right;
+  if (mode === "draw") right = '<span class="seg dim hide-sm">' + PENS[penIdx].name + " \u00B7 " + SIZES[sizeIdx].l + '</span>';
+  else right = '<span class="seg dim hide-sm">' + words + "w " + chars + "c</span>";
+  let sync;
+  if (!online) sync = '<span class="led led-y"></span> offline';
+  else if (saveStatus === "saving") sync = '<span class="led led-y"></span> saving';
+  else if (saveStatus === "error") sync = '<span class="led led-r"></span> save failed';
+  else sync = '<span class="led led-g"></span> synced';
+  $("#status").innerHTML =
+    '<span class="mode ' + meta[1] + '">' + meta[0] + '</span>' +
+    '<span class="seg fname">' + (active ? esc(active.title) : "no file") + '</span>' +
+    '<span class="seg dim hide-sm">' + notes.length + ' notes</span>' +
+    '<div class="spacer"></div>' + right +
+    '<span class="seg sync">' + sync + '</span>' +
+    '<span class="cursor">\u2588</span>';
+}
+
+/* ---- keyboard (NORMAL-mode shortcuts) ---- */
+window.addEventListener("keydown", (e) => {
+  const el = document.activeElement;
+  const typing = el && (el.tagName === "TEXTAREA" || el.tagName === "INPUT");
+  if (e.key === "Escape") { const ed = $("#ed"); if (ed) ed.blur(); mode = "normal"; renderBar(); renderStatus(); return; }
+  if (typing || mode === "insert" || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key === "i" && active) { e.preventDefault(); mode = "insert"; renderMain(); renderBar(); renderStatus(); focusEditor(); }
+  else if (e.key === "d" && active) { e.preventDefault(); mode = "draw"; renderMain(); renderBar(); renderStatus(); }
+  else if (e.key === "o") { e.preventDefault(); newNote(); }
+});
+
+$("#scrim").addEventListener("click", closeSidebar);
+
+// register the service worker — this is what makes the app installable and fast on repeat visits
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js").catch(() => {});
+}
+
+/* periodically pick up notes added from Obsidian / sync (sidebar only) */
+setInterval(() => { if (!document.hidden) loadList(); }, 15000);
+
+/* when offline, poll every 3s to detect when server comes back */
+setInterval(() => { if (!document.hidden && !online) loadList(); }, 3000);
+
+/* live sync — poll active note every 2s and update the editor if another device changed it */
+async function pollActiveNote() {
+  if (!active || document.hidden || !online) return;
+  if (Date.now() - lastTyped < 2000) return; // user is typing right now, skip to avoid clobbering
+  try {
+    const fresh = await api("GET", "/api/notes/" + encodeURIComponent(active.id));
+    if (fresh.updated <= (active.updated || 0)) return; // nothing new
+    active.updated = fresh.updated;
+    active.title = fresh.title;
+    if (mode === "draw") {
+      // draw mode: update strokes if they changed
+      active.strokes = fresh.strokes || [];
+      redraw();
+    } else {
+      // text mode: update editor if body changed
+      if (fresh.body !== active.body) {
+        active.body = fresh.body;
+        const ed = $("#ed");
+        if (ed && document.activeElement !== ed) {
+          // only overwrite when user isn't focused in the textarea
+          ed.value = fresh.body;
+        } else if (ed) {
+          // user has the textarea focused — update without losing cursor position
+          const start = ed.selectionStart, end = ed.selectionEnd;
+          ed.value = fresh.body;
+          ed.selectionStart = Math.min(start, fresh.body.length);
+          ed.selectionEnd = Math.min(end, fresh.body.length);
+        }
+      }
+    }
+    renderStatus();
+  } catch (e) {}
+}
+setInterval(pollActiveNote, 2000);
+
+/* ---- boot ---- */
+(async () => {
+  // show cached list immediately so app feels instant — server fetch updates it in loadList()
+  const cachedList = lcLoadList();
+  if (cachedList.length) { notes = cachedList; renderList(); }
+  renderBar(); renderStatus();
+  await loadList(); // fetch from server (updates cache on success, sets offline flag on failure)
+  // open last active note, or first in list — fall back to local cache if server is down
+  const firstId = activeId || (notes[0] && notes[0].id);
+  if (firstId) {
+    try { await openNote(firstId); }
+    catch(e) { renderMain(); } // cached note not available either
+  } else renderMain();
+})();
+</script>
+</body>
+</html>

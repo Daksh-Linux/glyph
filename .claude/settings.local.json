@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pkill -f server.py)",
+      "Bash(python /home/daksh/glyph/server.py)",
+      "Bash(curl -s http://localhost:8765/api/notes)",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s http://localhost:8765/)",
+      "Bash(curl -s -X PUT http://localhost:8765/api/notes/testchild1 -H 'Content-Type: application/json' -d '{\"title\":\"child test\",\"body\":\"child body\",\"strokes\":[],\"parent\":\"zclft1c\"}')",
+      "Bash(python3 -c \"import json,sys; notes=json.load\\(sys.stdin\\); print\\(next\\(\\(n for n in notes if n['id']=='testchild1'\\), 'NOT FOUND'\\)\\)\")",
+      "Bash(curl -s -X DELETE http://localhost:8765/api/notes/testchild1)"
+    ]
+  }
+}
