@@ -12,14 +12,35 @@
 <link rel="manifest" href="/manifest.json" />
 <!-- iOS home screen icon — Safari uses this when you "Add to Home Screen" -->
 <link rel="apple-touch-icon" href="/icons/192.png" />
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/192.png" />
+<script>
+// runs before the page paints so a saved "light" preference doesn't flash dark first
+(function () {
+  try {
+    var t = localStorage.getItem("glyph:theme");
+    if (t === "light") {
+      document.documentElement.setAttribute("data-theme", "light");
+      document.querySelector('meta[name="theme-color"]').setAttribute("content", "#f3f0f9");
+      document.querySelector('meta[name="color-scheme"]').setAttribute("content", "light");
+    }
+  } catch (e) {}
+})();
+</script>
 <title>glyph</title>
 <style>
 :root{
   --ink:#16161d; --surface:#1f1f28; --panel:#22222c; --line:#34343f; --line2:#2a2a35;
-  --text:#dcd7ba; --dim:#7a7a8c; --faint:#4a4a57;
+  --text:#dcd7ba; --dim:#7a7a8c; --faint:#4a4a57; --sel-bg:#20283b;
   --blue:#7e9cd8; --green:#98bb6c; --yellow:#e6c384; --red:#e46876; --mauve:#957fb8;
   --mono: ui-monospace,'JetBrains Mono','SFMono-Regular','Cascadia Code',Menlo,Consolas,'Liberation Mono',monospace;
   color-scheme: dark; /* tells Android Chrome this is already a dark theme — prevents forced-dark from mangling our colors */
+}
+/* light theme — same Hollow Purple palette as dakshhq.com, toggled via the bar button */
+:root[data-theme="light"]{
+  --ink:#f3f0f9; --surface:#faf9fd; --panel:#efe9f7; --line:#e1d9f0; --line2:#e8e1f5;
+  --text:#1a1625; --dim:#756f85; --faint:#b6aec8; --sel-bg:#ece2fb;
+  --blue:#3457d5; --green:#3f9e5c; --yellow:#b8860a; --red:#d1425d; --mauve:#7c3aed;
+  color-scheme: light;
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%}
@@ -40,12 +61,13 @@ svg{display:block}
 .bar{display:flex; align-items:center; gap:10px;
   height:calc(42px + env(safe-area-inset-top)); padding:env(safe-area-inset-top) 10px 0;
   background:var(--ink); border-bottom:1px solid var(--line); flex:0 0 auto}
-.prompt{white-space:nowrap}
+.brandmark{width:18px; height:18px; border-radius:4px; flex:0 0 auto; display:block}
+.prompt{white-space:nowrap; display:flex; align-items:center; gap:8px}
 .user{color:var(--green)} .path{color:var(--blue)} .sig{color:var(--mauve)}
 .file{opacity:.85; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:34vw}
 .bar .tab{font-size:13px; padding:5px 10px; border:1px solid var(--line); border-radius:5px; color:var(--dim); white-space:nowrap}
 .bar .tab .key{color:var(--mauve)}
-.bar .tab.on{color:var(--text); border-color:var(--blue); background:#20283b}
+.bar .tab.on{color:var(--text); border-color:var(--blue); background:var(--sel-bg)}
 .bar .tab.on .key{color:var(--blue)}
 .iconbtn{display:flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:5px; color:var(--dim)}
 .iconbtn:hover{color:var(--text); background:var(--panel)}
@@ -63,12 +85,12 @@ svg{display:block}
 .list{list-style:none; margin:0; padding:6px; overflow-y:auto; flex:1}
 .row{display:flex; align-items:center; gap:7px; padding:6px 8px; border-radius:5px; color:var(--text); cursor:pointer}
 .row:hover{background:var(--panel)}
-.row.sel{background:#20283b}
+.row.sel{background:var(--sel-bg)}
 .tree-tog{color:var(--dim); font-size:11px; padding:0; line-height:1; flex:0 0 12px; text-align:center; width:12px}
 .tree-tog:hover{color:var(--blue)}
 .tree-leaf{color:var(--blue); width:12px; text-align:center; white-space:pre; font-size:11px; flex:0 0 12px}
 .row .name{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-.row.sel .name{color:#fff}
+.row.sel .name{color:var(--text)}
 .row .ink{color:var(--yellow); font-size:11px}
 .addchild{opacity:0; color:var(--dim); font-size:13px; padding:1px 4px; border-radius:4px; line-height:1}
 .row:hover .addchild{opacity:.6}
@@ -78,8 +100,24 @@ svg{display:block}
 .row .del:hover{opacity:1; color:var(--red)}
 .newrow{padding:9px 12px; text-align:left; width:100%; color:var(--dim); border-top:1px solid var(--line2)}
 .newrow:hover{color:var(--green)}
+.newrow.danger{font-size:11px; color:var(--faint); border-top:none}
+.newrow.danger:hover{color:var(--red)}
 .scrim{display:none}
 [hidden]{display:none!important} /* author CSS can override UA [hidden]; this prevents that */
+
+/* account-deletion confirmation modal */
+.modal-scrim{position:fixed; inset:0; z-index:40; background:rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; padding:20px}
+.modal{width:100%; max-width:340px; background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:22px}
+.modal h2{font-size:15px; margin:0 0 10px; color:var(--red); font-weight:600}
+.modal p{font-size:13px; color:var(--dim); line-height:1.5; margin:0 0 14px}
+.modal input[type=password]{width:100%; background:var(--panel); border:1px solid var(--line); color:var(--text); border-radius:6px; padding:9px 10px; font-family:var(--mono); font-size:13px; outline:none; box-sizing:border-box}
+.modal input[type=password]:focus{border-color:var(--blue)}
+.modal .row2{display:flex; gap:8px; margin-top:16px}
+.modal .row2 button{flex:1; padding:9px; border-radius:6px; font-size:13px; border:1px solid var(--line); color:var(--text)}
+.modal .danger-btn{background:var(--red); border-color:var(--red); color:var(--ink); font-weight:600}
+.modal .danger-btn:disabled{opacity:.5}
+.modal .err{color:var(--red); font-size:12px; margin-top:8px; display:none}
+.modal .err.show{display:block}
 
 /* main */
 .main{flex:1; min-width:0; display:flex; flex-direction:column}
@@ -101,7 +139,7 @@ svg{display:block}
 .sw.on{border-color:var(--text); box-shadow:0 0 0 2px var(--surface) inset}
 .sizes{display:flex; gap:4px}
 .szbtn{font-size:12px; padding:4px 8px; border-radius:5px; color:var(--dim); border:1px solid var(--line)}
-.szbtn.on{color:var(--text); border-color:var(--blue); background:#20283b}
+.szbtn.on{color:var(--text); border-color:var(--blue); background:var(--sel-bg)}
 .toggle{font-size:12px; padding:4px 9px; border-radius:5px; border:1px solid var(--line); color:var(--dim)}
 .toggle.on{color:var(--ink); background:var(--green); border-color:var(--green)}
 /* canvas-scroll scrolls vertically only */
@@ -113,7 +151,7 @@ svg{display:block}
 /* live canvas sits on top of base, intercepts no pointer events — JS handles those on the base */
 .cv-live{position:absolute; top:0; left:0; pointer-events:none;}
 .ghost{padding:7px 14px; border:1px solid var(--line); border-radius:6px; color:var(--text)}
-.ghost:hover{border-color:var(--blue); background:#20283b}
+.ghost:hover{border-color:var(--blue); background:var(--sel-bg)}
 .ghost.sm{padding:4px 10px; font-size:12px}
 
 /* statusline */
@@ -153,6 +191,7 @@ svg{display:block}
   <div class="body">
     <aside class="side" id="side"></aside>
     <div class="scrim" id="scrim" hidden></div>
+    <div class="modal-scrim" id="modalScrim" hidden></div>
     <main class="main" id="main"></main>
   </div>
   <footer class="status" id="status"></footer>
@@ -179,7 +218,22 @@ const ICONS = {
   plus: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
   trash: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>',
   x: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  logout: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',
+  sun: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>',
+  moon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>',
 };
+
+/* ---- theme (light / dark) ---- */
+// stored plainly (not ME-namespaced) so it applies before login and is shared across accounts on this device
+function applyTheme(t) {
+  document.documentElement.setAttribute("data-theme", t);
+  try { localStorage.setItem("glyph:theme", t); } catch (e) {}
+  const mc = document.querySelector('meta[name="theme-color"]');
+  if (mc) mc.setAttribute("content", t === "light" ? "#f3f0f9" : "#16161d");
+  const cs = document.querySelector('meta[name="color-scheme"]');
+  if (cs) cs.setAttribute("content", t);
+}
+function currentTheme() { return document.documentElement.getAttribute("data-theme") || "dark"; }
 
 /* ---- state ---- */
 let notes = [];        // [{id,title,updated,hasInk,parent}]
@@ -190,6 +244,7 @@ let mode = "normal";   // normal | insert | draw
 let penIdx = 1, sizeIdx = 1, eraserSizeIdx = 1, penOnly = false, penSeen = false, erasing = false; // erasing = are we in eraser mode right now
 let saveStatus = "saved";
 let saveTimer = null;
+let ME = "";           // logged-in username, fetched from /api/me at boot
 let lastTyped = 0; // timestamp of last local keystroke — used to avoid clobbering in-progress typing during sync
 
 /* in-progress drawing */
@@ -209,14 +264,16 @@ const LC = {
   del: (k) => { try { localStorage.removeItem(k); } catch(e) {} }
 };
 
-function lcSaveNote(note) { LC.set("glyph:n:" + note.id, note); }
-function lcLoadNote(id) { return LC.get("glyph:n:" + id); }
-function lcSaveList(arr) { LC.set("glyph:list", arr.map(n => ({ id:n.id, title:n.title, updated:n.updated, parent:n.parent||null }))); }
-function lcLoadList() { return LC.get("glyph:list") || []; }
+// keys are namespaced by ME (the logged-in username) so two different
+// accounts logging into the same browser never see each other's cache
+function lcSaveNote(note) { LC.set("glyph:" + ME + ":n:" + note.id, note); }
+function lcLoadNote(id) { return LC.get("glyph:" + ME + ":n:" + id); }
+function lcSaveList(arr) { LC.set("glyph:" + ME + ":list", arr.map(n => ({ id:n.id, title:n.title, updated:n.updated, parent:n.parent||null }))); }
+function lcLoadList() { return LC.get("glyph:" + ME + ":list") || []; }
 
-function lcPending() { return new Set(LC.get("glyph:pending") || []); }
-function lcMarkPending(id) { const p = lcPending(); p.add(id); LC.set("glyph:pending", [...p]); }
-function lcClearPending(id) { const p = lcPending(); p.delete(id); LC.set("glyph:pending", [...p]); }
+function lcPending() { return new Set(LC.get("glyph:" + ME + ":pending") || []); }
+function lcMarkPending(id) { const p = lcPending(); p.add(id); LC.set("glyph:" + ME + ":pending", [...p]); }
+function lcClearPending(id) { const p = lcPending(); p.delete(id); LC.set("glyph:" + ME + ":pending", [...p]); }
 
 function setOnline(val) {
   if (online === val) return;
@@ -332,16 +389,26 @@ async function removeNote(id) {
 function renderBar() {
   $("#bar").innerHTML =
     '<button class="iconbtn only-mobile" id="menuBtn" aria-label="Notes">' + ICONS.menu + '</button>' +
-    '<span class="prompt"><span class="user">daksh@arch</span><span class="path"> ~/notes </span><span class="sig">&#10095;</span></span>' +
+    '<span class="prompt"><img class="brandmark" src="/icons/192.png" alt=""><span class="user">' + esc(ME) + '@glyph</span><span class="path"> ~/notes </span><span class="sig">&#10095;</span></span>' +
     '<span class="file">' + (active ? esc(active.title) : "&mdash;") + '</span>' +
     '<div class="spacer"></div>' +
     '<button class="tab ' + (mode === "insert" ? "on" : "") + '" id="tabI"><span class="key">i</span>nsert</button>' +
     '<button class="tab ' + (mode === "draw" ? "on" : "") + '" id="tabD"><span class="key">d</span>raw</button>' +
-    '<button class="iconbtn" id="newBtn" aria-label="New note" title="New note (o)">' + ICONS.plus + '</button>';
+    '<button class="iconbtn" id="newBtn" aria-label="New note" title="New note (o)">' + ICONS.plus + '</button>' +
+    '<button class="iconbtn" id="themeBtn" aria-label="Toggle light/dark theme" title="Toggle theme">' +
+      (currentTheme() === "dark" ? ICONS.sun : ICONS.moon) + '</button>' +
+    '<button class="iconbtn" id="logoutBtn" aria-label="Log out" title="Log out">' + ICONS.logout + '</button>';
   $("#menuBtn").onclick = openSidebar;
   $("#tabI").onclick = () => { if (active) { mode = "insert"; renderMain(); renderBar(); renderStatus(); focusEditor(); } };
   $("#tabD").onclick = () => { if (active) { mode = "draw"; renderMain(); renderBar(); renderStatus(); } };
   $("#newBtn").onclick = () => newNote();
+  $("#themeBtn").onclick = () => { applyTheme(currentTheme() === "dark" ? "light" : "dark"); renderBar(); };
+  $("#logoutBtn").onclick = () => logout();
+}
+
+async function logout() {
+  try { await fetch("/api/auth/logout", { method: "POST" }); } catch (e) {}
+  window.location.href = "/login";
 }
 
 /* ---- render: sidebar (tree) ---- */
@@ -405,7 +472,10 @@ function renderList() {
     '<div class="side-head"><span>ls ~/notes</span>' +
     '<button class="iconbtn only-mobile" id="closeSide" aria-label="Close">' + ICONS.x + "</button></div>" +
     '<ul class="list">' + (rows || '<li class="row"><span class="name" style="color:var(--dim)">empty vault</span></li>') + "</ul>" +
-    '<button class="newrow" id="newRow">+ new note</button>';
+    '<button class="newrow" id="newRow">+ new note</button>' +
+    '<a class="newrow" href="/legal" target="_blank" rel="noopener" style="font-size:11px; text-decoration:none; display:block; border-top:none;">privacy &amp; terms</a>' +
+    '<a class="newrow" href="/contact" target="_blank" rel="noopener" style="font-size:11px; text-decoration:none; display:block; border-top:none;">contact</a>' +
+    '<button class="newrow danger" id="delAcctRow">delete account</button>';
   // single delegated listener handles all interactions in the tree
   $("#side").querySelector(".list").addEventListener("click", (e) => {
     const tog = e.target.closest("[data-tog]");
@@ -418,11 +488,68 @@ function renderList() {
     if (row) { openNote(row.getAttribute("data-id")); closeSidebar(); }
   });
   $("#newRow").onclick = () => newNote();
+  $("#delAcctRow").onclick = openDeleteAccountModal;
   const cs = $("#closeSide"); if (cs) cs.onclick = closeSidebar;
 }
 
 function openSidebar() { $("#side").classList.add("open"); $("#scrim").hidden = false; }
 function closeSidebar() { $("#side").classList.remove("open"); $("#scrim").hidden = true; }
+
+/* ---- account deletion ---- */
+function closeModal() { $("#modalScrim").hidden = true; }
+
+function openDeleteAccountModal() {
+  const scrim = $("#modalScrim");
+  scrim.innerHTML =
+    '<div class="modal">' +
+      "<h2>delete account</h2>" +
+      "<p>this permanently deletes your account and every note in it. there is no undo. enter your password to confirm.</p>" +
+      '<input type="password" id="delPw" placeholder="password" autocomplete="current-password">' +
+      '<div class="err" id="delErr"></div>' +
+      '<div class="row2">' +
+        '<button class="cancel" id="delCancel">cancel</button>' +
+        '<button class="danger-btn" id="delConfirm">delete account</button>' +
+      "</div>" +
+    "</div>";
+  scrim.hidden = false;
+  $("#delPw").focus();
+  $("#delCancel").onclick = closeModal;
+  scrim.onclick = (e) => { if (e.target === scrim) closeModal(); };
+  $("#delPw").onkeydown = (e) => { if (e.key === "Enter") $("#delConfirm").click(); };
+  $("#delConfirm").onclick = async () => {
+    const pw = $("#delPw").value;
+    const btn = $("#delConfirm");
+    const err = $("#delErr");
+    err.classList.remove("show");
+    if (!pw) { err.textContent = "enter your password"; err.classList.add("show"); return; }
+    btn.disabled = true; btn.textContent = "deleting...";
+    try {
+      const res = await fetch("/api/auth/account", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: pw }),
+      });
+      if (res.ok) {
+        // clear this account's cached notes, but leave device-level prefs (like theme) alone
+        try {
+          Object.keys(localStorage)
+            .filter((k) => k.startsWith("glyph:" + ME + ":"))
+            .forEach((k) => localStorage.removeItem(k));
+        } catch (e) {}
+        window.location.href = "/login";
+      } else {
+        const data = await res.json().catch(() => ({}));
+        err.textContent = data.error || "something went wrong";
+        err.classList.add("show");
+        btn.disabled = false; btn.textContent = "delete account";
+      }
+    } catch (e) {
+      err.textContent = "network error";
+      err.classList.add("show");
+      btn.disabled = false; btn.textContent = "delete account";
+    }
+  };
+}
 
 /* ---- render: main ---- */
 function renderMain() {
@@ -776,6 +903,15 @@ setInterval(pollActiveNote, 2000);
 
 /* ---- boot ---- */
 (async () => {
+  // server already redirects "/" to "/login" for anonymous requests, so this
+  // should always succeed — but if a session expires between page load and
+  // this fetch, bounce to login rather than rendering a broken bar.
+  try {
+    const res = await fetch("/api/me");
+    if (!res.ok) { window.location.href = "/login"; return; }
+    ME = (await res.json()).username;
+  } catch (e) { window.location.href = "/login"; return; }
+
   // show cached list immediately so app feels instant — server fetch updates it in loadList()
   const cachedList = lcLoadList();
   if (cachedList.length) { notes = cachedList; renderList(); }

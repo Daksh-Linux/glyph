@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#16161d">
+<meta name="color-scheme" content="dark">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/192.png">
+<title>glyph — privacy &amp; terms</title>
+<script>
+(function () {
+  try {
+    if (localStorage.getItem("glyph:theme") === "light") {
+      document.documentElement.setAttribute("data-theme", "light");
+    }
+  } catch (e) {}
+})();
+</script>
+<style>
+  :root{
+    --ink:#16161d; --surface:#1f1f28; --panel:#22222c; --border:#363646;
+    --text:#dcd7ba; --muted:#727169;
+    --blue:#7e9cd8; --green:#98bb6c; --yellow:#e6c384; --red:#e46876; --mauve:#957fb8;
+    color-scheme: dark;
+  }
+  :root[data-theme="light"]{
+    --ink:#f3f0f9; --surface:#ffffff; --panel:#f5f1fa; --border:#e1d9f0;
+    --text:#1a1625; --muted:#756f85;
+    --blue:#3457d5; --green:#3f9e5c; --yellow:#b8860a; --red:#d1425d; --mauve:#7c3aed;
+    color-scheme: light;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{background:var(--ink); color:var(--text);}
+  body{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+    line-height:1.65; padding:56px 20px 80px;
+  }
+  .wrap{max-width:620px; margin:0 auto;}
+  .top{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;}
+  .prompt{color:var(--green); font-size:13px;}
+  .prompt .path{color:var(--blue);}
+  .prompt .dollar{color:var(--muted);}
+  .themebtn{
+    width:30px; height:30px; border-radius:6px; display:flex; align-items:center; justify-content:center;
+    color:var(--muted); background:var(--surface); border:1px solid var(--border); cursor:pointer;
+  }
+  .themebtn:hover{color:var(--text);}
+  h1{font-size:22px; font-weight:600; margin:18px 0 4px;}
+  .sub{color:var(--muted); font-size:13px; margin-bottom:36px;}
+  section{margin-bottom:36px;}
+  h2{font-size:15px; font-weight:600; color:var(--mauve); margin-bottom:10px;}
+  h2::before{content:"# ";color:var(--border);}
+  p{font-size:13.5px; color:var(--text); margin-bottom:10px;}
+  p.dim, li.dim{color:var(--muted);}
+  ul{margin:0 0 10px 0; padding-left:20px;}
+  li{font-size:13.5px; margin-bottom:6px;}
+  a{color:var(--blue);}
+  code{background:var(--panel); border:1px solid var(--border); border-radius:4px; padding:1px 5px; font-size:12.5px;}
+  .note{
+    border:1px solid var(--border); background:var(--surface); border-radius:8px;
+    padding:14px 16px; font-size:12.5px; color:var(--muted); margin-top:44px;
+  }
+  footer{margin-top:40px; padding-top:20px; border-top:1px solid var(--border); font-size:12px; color:var(--muted);}
+  footer a{color:var(--blue); text-decoration:none;}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="prompt"><span class="path">daksh@glyph</span><span class="dollar">:~$</span> cat legal.md</div>
+      <button class="themebtn" id="themeBtn" aria-label="Toggle theme"></button>
+    </div>
+    <h1>privacy &amp; terms</h1>
+    <p class="sub">glyph is a one-person, self-hosted project. this page says plainly what happens to your data — no legal team, just the truth.</p>
+
+    <section id="privacy">
+      <h2>privacy</h2>
+      <p><strong>what's collected:</strong> your username, a salted password hash (never the password itself), and whatever notes or sketches you write in your own account.</p>
+      <p><strong>where it lives:</strong> on a single server I run and pay for (a Hetzner VPS). Nothing is sent to any third party — no analytics, no trackers, no ad networks, no cloud AI services. I checked the code specifically to confirm this: there are zero outbound network calls from glyph to anywhere but your own browser.</p>
+      <p><strong>who can see it:</strong> just me, as the person operating the server — the same way any self-hosted app works. Notes are stored per-account in separate folders; other users of glyph can't read your notes.</p>
+      <p><strong>cookies:</strong> one cookie, used only to keep you logged in (<code>glyph_session</code>). It's not used for tracking or advertising.</p>
+      <p><strong>how long it's kept:</strong> until you delete it. You can delete your entire account and every note in it yourself, at any time, from inside the app (sidebar → <em>delete account</em>) — no need to ask.</p>
+      <p><strong>who this isn't for:</strong> glyph isn't intended for children under 13.</p>
+    </section>
+
+    <section id="terms">
+      <h2>terms</h2>
+      <p>glyph is provided as-is, run by one person as a personal project, with no uptime guarantee and no warranty. Please don't use it for anything you can't afford to lose, and keep your own backup of anything critical — notes are plain markdown files, so exporting them is straightforward if you ever need to.</p>
+      <ul>
+        <li>Don't use glyph to store or share illegal content.</li>
+        <li>Don't attempt to access another account or disrupt the service.</li>
+        <li>Accounts that do either may be suspended or removed.</li>
+      </ul>
+      <p class="dim">This service may change or shut down at any time — it's a hobby project, not a company.</p>
+    </section>
+
+    <div class="note">
+      This page was written in plain language by the person who runs glyph, not by a lawyer, because a small self-hosted project doesn't have one. If you have questions or want your data handled differently, just <a href="/contact">reach out</a>.
+    </div>
+
+    <footer>
+      <a href="/login">&larr; back to glyph</a> ·
+      <a href="/contact">contact</a> ·
+      <a href="https://github.com/Daksh-Linux" target="_blank" rel="noopener">github.com/Daksh-Linux</a>
+    </footer>
+  </div>
+
+<script>
+  var SUN = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>';
+  var MOON = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>';
+  var themeBtn = document.getElementById("themeBtn");
+  function paint() {
+    var t = document.documentElement.getAttribute("data-theme") || "dark";
+    themeBtn.innerHTML = t === "dark" ? SUN : MOON;
+  }
+  themeBtn.onclick = function () {
+    var next = (document.documentElement.getAttribute("data-theme") || "dark") === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    try { localStorage.setItem("glyph:theme", next); } catch (e) {}
+    document.querySelector('meta[name="theme-color"]').setAttribute("content", next === "light" ? "#f3f0f9" : "#16161d");
+    document.querySelector('meta[name="color-scheme"]').setAttribute("content", next);
+    paint();
+  };
+  paint();
+</script>
+</body>
+</html>

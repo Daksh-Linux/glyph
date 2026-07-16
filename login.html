@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#16161d">
+<meta name="color-scheme" content="dark">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/192.png">
+<link rel="apple-touch-icon" href="/icons/192.png">
+<title>glyph</title>
+<script>
+// runs before the page paints so a saved "light" preference doesn't flash dark first
+(function () {
+  try {
+    if (localStorage.getItem("glyph:theme") === "light") {
+      document.documentElement.setAttribute("data-theme", "light");
+    }
+  } catch (e) {}
+})();
+</script>
+<style>
+  :root{
+    --ink:#16161d; --surface:#1f1f28; --panel:#22222c; --border:#363646;
+    --text:#dcd7ba; --muted:#727169;
+    --blue:#7e9cd8; --green:#98bb6c; --yellow:#e6c384; --red:#e46876; --mauve:#957fb8;
+    color-scheme: dark;
+  }
+  :root[data-theme="light"]{
+    --ink:#f3f0f9; --surface:#ffffff; --panel:#f5f1fa; --border:#e1d9f0;
+    --text:#1a1625; --muted:#756f85;
+    --blue:#3457d5; --green:#3f9e5c; --yellow:#b8860a; --red:#d1425d; --mauve:#7c3aed;
+    color-scheme: light;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    background:var(--ink); color:var(--text);
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+    display:flex; align-items:center; justify-content:center;
+    min-height:100%; padding:20px;
+  }
+  .card{
+    width:100%; max-width:340px;
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:10px; padding:28px 26px;
+  }
+  .logo{width:44px; height:44px; border-radius:10px; display:block; margin-bottom:14px;}
+  .prompt{color:var(--green); font-size:13px; margin-bottom:14px;}
+  .prompt .path{color:var(--blue);}
+  .prompt .dollar{color:var(--muted);}
+  h1{font-size:19px; font-weight:600; margin-bottom:6px;}
+  .sub{color:var(--muted); font-size:13px; margin-bottom:6px;}
+  label{display:block; font-size:12px; color:var(--muted); margin:14px 0 6px;}
+  input[type=text], input[type=password]{
+    width:100%; background:var(--panel); border:1px solid var(--border);
+    color:var(--text); border-radius:6px; padding:10px 12px;
+    font-family:inherit; font-size:14px; outline:none;
+  }
+  input[type=text]:focus, input[type=password]:focus{border-color:var(--blue);}
+  button{
+    width:100%; margin-top:20px; padding:10px 12px;
+    background:var(--blue); color:var(--ink); border:none; border-radius:6px;
+    font-family:inherit; font-size:14px; font-weight:600; cursor:pointer;
+  }
+  button:hover{opacity:.9;}
+  button:disabled{opacity:.5; cursor:default;}
+  .error{
+    display:none; margin-top:14px; padding:8px 10px;
+    background:color-mix(in srgb, var(--red) 12%, transparent); border:1px solid var(--red);
+    color:var(--red); font-size:12.5px; border-radius:6px;
+  }
+  .error.show{display:block;}
+  .themebtn{
+    position:fixed; top:16px; right:16px; width:32px; height:32px; border-radius:7px;
+    display:flex; align-items:center; justify-content:center; color:var(--muted);
+    background:var(--surface); border:1px solid var(--border); cursor:pointer;
+  }
+  .themebtn:hover{color:var(--text);}
+  .switch{
+    margin-top:18px; text-align:center; font-size:12.5px; color:var(--muted);
+  }
+  .switch a{color:var(--blue); text-decoration:none;}
+  .switch a:hover{text-decoration:underline;}
+  .legal{
+    margin-top:10px; text-align:center; font-size:11.5px; color:var(--muted);
+  }
+  .legal a{color:var(--muted); text-decoration:underline;}
+</style>
+</head>
+<body>
+  <button class="themebtn" id="themeBtn" aria-label="Toggle light/dark theme" title="Toggle theme"></button>
+  <div class="card">
+    <img class="logo" src="/icons/192.png" alt="glyph">
+    <div class="prompt"><span class="path">daksh@glyph</span><span class="dollar">:~$</span> <span id="cmd"></span></div>
+    <h1 id="title"></h1>
+    <p class="sub" id="sub"></p>
+    <form id="form">
+      <label for="un">username</label>
+      <input type="text" id="un" required autofocus autocapitalize="off" autocorrect="off" spellcheck="false" pattern="[a-z0-9_-]{3,20}">
+      <label for="pw" id="pwLabel">password</label>
+      <input type="password" id="pw" required>
+      <div id="confirmWrap" style="display:none">
+        <label for="pw2">confirm password</label>
+        <input type="password" id="pw2" autocomplete="new-password">
+      </div>
+      <button type="submit" id="btn"></button>
+    </form>
+    <div class="error" id="err"></div>
+    <div class="switch" id="switch"></div>
+    <div class="legal">by continuing you agree to the <a href="/legal">privacy &amp; terms</a> · <a href="/contact">contact</a></div>
+  </div>
+<script>
+  var SUN = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>';
+  var MOON = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>';
+  var themeBtn = document.getElementById("themeBtn");
+  function paintThemeBtn() {
+    var t = document.documentElement.getAttribute("data-theme") || "dark";
+    themeBtn.innerHTML = t === "dark" ? SUN : MOON;
+  }
+  themeBtn.onclick = function () {
+    var next = (document.documentElement.getAttribute("data-theme") || "dark") === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    try { localStorage.setItem("glyph:theme", next); } catch (e) {}
+    document.querySelector('meta[name="theme-color"]').setAttribute("content", next === "light" ? "#f3f0f9" : "#16161d");
+    document.querySelector('meta[name="color-scheme"]').setAttribute("content", next);
+    paintThemeBtn();
+  };
+  paintThemeBtn();
+
+  var MODE = "__MODE__"; // server fills in "login" or "signup"
+  var cmd = document.getElementById("cmd");
+  var title = document.getElementById("title");
+  var sub = document.getElementById("sub");
+  var btn = document.getElementById("btn");
+  var un = document.getElementById("un");
+  var pw = document.getElementById("pw");
+  var confirmWrap = document.getElementById("confirmWrap");
+  var pwLabel = document.getElementById("pwLabel");
+  var err = document.getElementById("err");
+  var switchEl = document.getElementById("switch");
+
+  if (MODE === "signup") {
+    cmd.textContent = "adduser";
+    title.textContent = "welcome to glyph";
+    sub.textContent = "create an account to get your own notebook.";
+    pwLabel.textContent = "password";
+    pw.setAttribute("autocomplete", "new-password");
+    confirmWrap.style.display = "block";
+    btn.textContent = "create account";
+    switchEl.innerHTML = 'already have an account? <a href="/login">log in</a>';
+  } else {
+    cmd.textContent = "login";
+    title.textContent = "glyph";
+    sub.textContent = "log in to your notebook.";
+    pw.setAttribute("autocomplete", "current-password");
+    btn.textContent = "log in";
+    switchEl.innerHTML = "new here? <a href=\"/signup\">create an account</a>";
+  }
+
+  function showError(msg) {
+    err.textContent = msg;
+    err.classList.add("show");
+  }
+
+  document.getElementById("form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    err.classList.remove("show");
+    var username = un.value.trim().toLowerCase();
+    var password = pw.value;
+
+    if (MODE === "signup") {
+      var confirm = document.getElementById("pw2").value;
+      if (!/^[a-z0-9_-]{3,20}$/.test(username)) { showError("username must be 3-20 characters: lowercase letters, numbers, - or _"); return; }
+      if (password.length < 8) { showError("password must be at least 8 characters"); return; }
+      if (password !== confirm) { showError("passwords don't match"); return; }
+    }
+
+    btn.disabled = true;
+    var url = MODE === "signup" ? "/api/auth/signup" : "/api/auth/login";
+    fetch(url, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({username: username, password: password}),
+    })
+      .then(function (res) { return res.json().then(function (data) { return {res: res, data: data}; }); })
+      .then(function (r) {
+        if (r.res.ok) {
+          window.location.href = "/";
+        } else {
+          showError(r.data.error || "something went wrong");
+          btn.disabled = false;
+        }
+      })
+      .catch(function () {
+        showError("network error");
+        btn.disabled = false;
+      });
+  });
+</script>
+</body>
+</html>

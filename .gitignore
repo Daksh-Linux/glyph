@@ -1,1 +1,5 @@
-vault/
+users/
+users.json
+contact_messages.jsonl
+CLAUDE.md
+.claude/
