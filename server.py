@@ -695,9 +695,13 @@ toolbar buttons) for pen strokes while drawing.
 
 touch the page with an apple pencil and you're instantly drawing — same
 page as your text, no separate screen. fingers still scroll. in the draw
-toolbar: six pen colours, three sizes, a translucent marker, an eraser,
-undo/redo/clear, and **done** to go back to typing. pen-only is on by
-default so your resting palm never draws.
+toolbar: fifteen pen colours, three sizes, a translucent marker, an
+eraser, undo/redo/clear, and **done** to go back to typing. pen-only is
+on by default so your resting palm never draws.
+
+tap **select** and circle some writing with the pencil to lasso it, then
+drag it anywhere, scale it with A+ / A−, highlight it, recolor it,
+duplicate it, or delete it.
 
 ## linking & finding
 

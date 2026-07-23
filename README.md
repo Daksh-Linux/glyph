@@ -32,7 +32,9 @@ Every "note-taking app" I tried wanted to sync my thoughts to someone else's ser
 ### Drawing
 - **One surface for text and ink** — draw directly over your notes with an Apple Pencil; the ink stays visible while you type
 - **Pencil = draw, finger = scroll** — touching the page with the pencil switches to draw mode instantly and that same stroke already draws; palm rejection built in
-- **Pens, marker, eraser** — six pen colors, three sizes, a translucent highlighter marker, an eraser with its own sizes, stroke undo/redo
+- **Pens, marker, eraser** — fifteen pen colors, three sizes, a translucent highlighter marker, an eraser with its own sizes, stroke undo/redo
+- **Lasso select** — circle handwriting with the pencil, then move it, scale it (width scales too), highlight it, recolor it, duplicate or delete it
+- **Low-latency ink** — coalesced input samples, predicted-point rendering, and light position/pressure smoothing
 
 ### Planning (templates)
 - **New note from a template** — tap + and pick: daily planner, weekly planner, monthly calendar (generated for the actual month), money planner, habit tracker, goal tracker, project tracker, reading list, meal planner, workout log, travel planner, study notes, weekly review

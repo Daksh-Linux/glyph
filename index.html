@@ -229,16 +229,14 @@ svg{display:block}
 #blockEditor{width:100%; position:relative; z-index:1; padding:22px clamp(16px,5vw,64px) 45vh;
   color:var(--text); font-family:var(--mono); font-size:16px; line-height:1.7; box-sizing:border-box;}
 
-/* keyboard bar — the Notion-style formatting toolbar. Sits above the status bar in normal flow;
-   when the on-screen keyboard opens (iPad/Android) it floats up to sit right on top of it
-   (see positionKbar(), driven by the visualViewport API) */
+/* keyboard bar — the Notion-style formatting toolbar. It is NOT the bottom-most element (the
+   status bar sits below it) and the shell is now pinned to the visible viewport, so it must
+   NOT carry env(safe-area-inset-bottom): that inset is for content resting against the screen
+   edge, and here it just rendered ~20px of dead space under the icons on iPad (0 elsewhere,
+   which is why it only ever showed up there). */
 .kbar{display:flex; align-items:center; gap:2px; padding:4px 6px; flex:0 0 auto;
-  background:var(--ink); border-top:1px solid var(--line); overflow-x:auto; scrollbar-width:none;
-  padding-bottom:calc(4px + env(safe-area-inset-bottom))}
+  background:var(--ink); border-top:1px solid var(--line); overflow-x:auto; scrollbar-width:none}
 .kbar::-webkit-scrollbar{display:none}
-/* the home-indicator inset is meaningless while the keyboard covers it — leaving it in was
-   the empty strip under the keyboard bar on iPad */
-body.kb-open .kbar{padding-bottom:4px}
 .kbar button{flex:0 0 auto; min-width:34px; height:32px; padding:0 8px; border-radius:6px;
   color:var(--dim); font-size:13px; display:flex; align-items:center; justify-content:center; white-space:nowrap}
 .kbar button:hover{color:var(--text); background:var(--panel)}
@@ -443,6 +441,11 @@ body.zen .bar, body.zen .status, body.zen .kbar, body.zen .side, body.zen .backl
 .szbtn.on{color:var(--text); border-color:var(--blue); background:var(--sel-bg)}
 .toggle{font-size:12px; padding:4px 9px; border-radius:5px; border:1px solid var(--line); color:var(--dim)}
 .toggle.on{color:var(--ink); background:var(--green); border-color:var(--green)}
+/* ink selection actions — only present while strokes are selected */
+.ink-actions{display:flex; align-items:center; gap:5px; flex-wrap:wrap}
+.ink-actions:not(:empty){padding-left:8px; margin-left:4px; border-left:1px solid var(--line2)}
+.ink-count{font-size:11.5px; color:var(--blue); white-space:nowrap}
+.swatches{flex-wrap:wrap}
 /* canvas-scroll scrolls vertically only — touch-action:none so a palm landing near the canvas's
    edge (not exactly on it) can't trigger the browser's own native scroll, which used to fight
    with the manual JS scroll below and feel like the page randomly jumping around while writing */
@@ -561,6 +564,11 @@ const PENS = [
   { name: "paper", c: "#dcd7ba" }, { name: "wave", c: "#7e9cd8" },
   { name: "spring", c: "#98bb6c" }, { name: "carp", c: "#e6c384" },
   { name: "peony", c: "#e46876" }, { name: "wisteria", c: "#957fb8" },
+  { name: "sakura", c: "#d27e99" }, { name: "sky", c: "#7fb4ca" },
+  { name: "autumn", c: "#ffa066" }, { name: "pine", c: "#6a9589" },
+  { name: "crimson", c: "#c34043" }, { name: "sand", c: "#c0a36e" },
+  { name: "ash", c: "#9a9aa8" }, { name: "snow", c: "#f2f2f7" },
+  { name: "ink", c: "#1a1625" },
 ];
 const SIZES = [{ l: "fine", v: 2 }, { l: "med", v: 3.5 }, { l: "bold", v: 6 }];
 // eraser gets its own bigger sizes — small/med/large map to 10/22/44 pixels
@@ -603,7 +611,7 @@ let mode = "normal";   // normal | insert | draw
 // pen colour/sizes persist per device (like theme/penOnly) — pick your pen once
 function readIdx(key, dflt, max) { try { const v = parseInt(localStorage.getItem("glyph:" + key), 10); return v >= 0 && v <= max ? v : dflt; } catch (e) { return dflt; } }
 function setIdx(key, v) { try { localStorage.setItem("glyph:" + key, String(v)); } catch (e) {} }
-let penIdx = readIdx("penIdx", 1, 5), sizeIdx = readIdx("sizeIdx", 1, 2), eraserSizeIdx = readIdx("eraserIdx", 1, 2),
+let penIdx = readIdx("penIdx", 1, PENS.length - 1), sizeIdx = readIdx("sizeIdx", 1, 2), eraserSizeIdx = readIdx("eraserIdx", 1, 2),
   penOnly = readPenOnly(), penSeen = false, erasing = false; // erasing = are we in eraser mode right now
 function readPenOnly() { try { return localStorage.getItem("glyph:penOnly") !== "0"; } catch (e) { return true; } }
 function setPenOnly(v) { penOnly = v; try { localStorage.setItem("glyph:penOnly", v ? "1" : "0"); } catch (e) {} }
@@ -762,6 +770,7 @@ async function openNote(id) {
     setOnline(false);
   }
   activeId = active.id;
+  inkSel = []; lassoPts = null; inkDrag = null; // selection belongs to the note being left
   if (mode === "draw") mode = "normal";
   backlinksData = { linked: [], mentions: [] };
   resetHistory(); // undo history is per-note — never undo note A's edits into note B
@@ -3560,6 +3569,7 @@ function focusEditor() { const ed = $("#ed"); if (ed) ed.focus(); }
    no re-render, no new canvas, no lost scroll position. Everything that used to write
    `mode = ...; renderMain(); ...` goes through here now. */
 function setMode(m) {
+  if (m !== "draw" && inkSel.length) clearInkSelection(); // no stale outline over the text
   mode = m;
   if ($("#noteScroll") && active && !localFile) {
     applyModeUI();
@@ -3584,7 +3594,9 @@ function applyModeUI() {
 function drawbarHtml() {
   return '<div class="swatches" id="sw"></div>' +
     '<div class="sizes" id="sz"></div>' +
+    '<div class="ink-actions" id="inkActions"></div>' +
     '<div class="spacer"></div>' +
+    '<button class="toggle ' + (lassoOn ? "on" : "") + '" id="lasso" title="Circle strokes to select, then move / resize / recolor them">select</button>' +
     '<button class="toggle ' + (markerOn ? "on" : "") + '" id="marker" title="Translucent highlighter strokes">marker ' + (markerOn ? "on" : "off") + '</button>' +
     '<button class="toggle ' + (erasing ? "on" : "") + '" id="eraser">eraser ' + (erasing ? "on" : "off") + '</button>' +
     '<button class="toggle ' + (penOnly ? "on" : "") + '" id="penonly" title="Ignore finger and palm, pencil only">pen-only ' + (penOnly ? "on" : "off") + '</button>' +
@@ -3592,6 +3604,58 @@ function drawbarHtml() {
     '<button class="ghost sm" id="redoInk">redo</button>' +
     '<button class="ghost sm" id="clear">clear</button>' +
     '<button class="ghost sm" id="drawDone" title="Back to writing">done</button>';
+}
+
+/* ---- selection action bar — only rendered while strokes are selected ---- */
+function updateInkActions() {
+  const host = $("#inkActions");
+  if (!host) return;
+  if (!inkSel.length) { host.innerHTML = ""; return; }
+  host.innerHTML =
+    '<span class="ink-count">' + inkSel.length + " selected</span>" +
+    '<button class="ghost sm" id="inkBigger" title="Make bigger">A+</button>' +
+    '<button class="ghost sm" id="inkSmaller" title="Make smaller">A−</button>' +
+    '<button class="ghost sm" id="inkHl" title="Turn into highlighter strokes">highlight</button>' +
+    '<button class="ghost sm" id="inkColor" title="Recolor with the current pen colour">recolor</button>' +
+    '<button class="ghost sm" id="inkDup" title="Duplicate">duplicate</button>' +
+    '<button class="ghost sm" id="inkDel" title="Delete selected ink">delete</button>' +
+    '<button class="ghost sm" id="inkNone" title="Deselect">done</button>';
+
+  const after = () => { scheduleSave(); sizeInkCanvas(); drawSelectionOverlay(); updateInkActions(); };
+  const box = () => strokesBBox(active.strokes || [], inkSel);
+
+  $("#inkBigger").onclick = () => { const b = box(); if (b) { scaleStrokes(active.strokes, inkSel, 1.15, b.cx, b.cy); after(); } };
+  $("#inkSmaller").onclick = () => { const b = box(); if (b) { scaleStrokes(active.strokes, inkSel, 1 / 1.15, b.cx, b.cy); after(); } };
+  $("#inkHl").onclick = () => {
+    for (const i of inkSel) {
+      const s = active.strokes[i];
+      if (!s || s.erase) continue;
+      // toggle: a second press turns highlighter strokes back into normal ink
+      if (s.hl) { s.hl = false; s.size = Math.max(0.5, s.size / 3.2); }
+      else { s.hl = true; s.size = s.size * 3.2; }
+    }
+    after();
+  };
+  $("#inkColor").onclick = () => {
+    for (const i of inkSel) { const s = active.strokes[i]; if (s && !s.erase) s.color = PENS[penIdx].c; }
+    after();
+  };
+  $("#inkDup").onclick = () => {
+    // copies land slightly offset so they're visibly separate, and become the new selection
+    const copies = inkSel.map((i) => JSON.parse(JSON.stringify(active.strokes[i]))).filter(Boolean);
+    translateStrokes(copies, copies.map((_, i) => i), 24, 24);
+    const start = active.strokes.length;
+    active.strokes = active.strokes.concat(copies);
+    inkSel = copies.map((_, i) => start + i);
+    after();
+  };
+  $("#inkDel").onclick = () => {
+    const drop = new Set(inkSel);
+    active.strokes = (active.strokes || []).filter((_, i) => !drop.has(i));
+    inkSel = [];
+    scheduleSave(); redraw(); clearLive(); updateInkActions();
+  };
+  $("#inkNone").onclick = () => clearInkSelection();
 }
 
 /* ---- keyboard bar ----
@@ -3888,13 +3952,17 @@ function sizeInkCanvas() {
 }
 
 /* ---- ink undo/redo ---- */
+// inkSel holds indices into active.strokes, so anything that adds/removes/replaces strokes
+// has to drop the selection first — otherwise it would point at the wrong ink
 function undoStroke() {
   if (!active || !(active.strokes || []).length) return;
+  clearInkSelection();
   strokeRedo.push(active.strokes.pop());
   redraw(); scheduleSave();
 }
 function redoStroke() {
   if (!active || !strokeRedo.length) return;
+  clearInkSelection();
   active.strokes.push(strokeRedo.pop());
   redraw(); scheduleSave();
 }
@@ -3912,16 +3980,18 @@ function buildDrawControls() {
       $("#sw").querySelectorAll(".sw").forEach((x, j) => x.classList.toggle("on", j === penIdx));
     };
   });
-  // marker and eraser are mutually exclusive — turning one on turns the other off
-  $("#marker").onclick = () => { markerOn = !markerOn; if (markerOn) erasing = false; updateEraser(); updateMarker(); };
-  $("#eraser").onclick = () => { erasing = !erasing; if (erasing) markerOn = false; updateEraser(); updateMarker(); };
+  // marker, eraser and lasso are mutually exclusive tools
+  $("#marker").onclick = () => { markerOn = !markerOn; if (markerOn) { erasing = false; setLasso(false); } updateEraser(); updateMarker(); };
+  $("#eraser").onclick = () => { erasing = !erasing; if (erasing) { markerOn = false; setLasso(false); } updateEraser(); updateMarker(); };
+  $("#lasso").onclick = () => { setLasso(!lassoOn); if (lassoOn) { erasing = false; markerOn = false; updateEraser(); updateMarker(); } };
+  updateInkActions();
   $("#penonly").onclick = () => { setPenOnly(!penOnly); updatePenOnly(); };
   $("#undo").onclick = undoStroke;
   $("#redoInk").onclick = redoStroke;
   // wiping every stroke is the one draw action you can't undo one step at a time — confirm it
   $("#clear").onclick = () => {
     if (!active || !(active.strokes || []).length) return;
-    if (confirm("erase all ink on this note?")) { active.strokes = []; strokeRedo = []; redraw(); scheduleSave(); }
+    if (confirm("erase all ink on this note?")) { clearInkSelection(); active.strokes = []; strokeRedo = []; redraw(); scheduleSave(); }
   };
   $("#drawDone").onclick = () => setMode("insert");
   updatePenOnly();
@@ -3931,6 +4001,14 @@ function updateMarker() {
   const b = $("#marker"); if (!b) return;
   b.classList.toggle("on", markerOn);
   b.textContent = "marker " + (markerOn ? "on" : "off");
+}
+
+function setLasso(on) {
+  lassoOn = on;
+  const b = $("#lasso");
+  if (b) b.classList.toggle("on", on);
+  if (!on) clearInkSelection(); // leaving the tool drops the selection and its outline
+  else updateInkActions();
 }
 
 function updatePenOnly() {
@@ -3970,6 +4048,78 @@ function renderSizes() {
       el.onclick = () => { sizeIdx = +el.getAttribute("data-i"); setIdx("sizeIdx", sizeIdx); sz.querySelectorAll(".szbtn").forEach((x, j) => x.classList.toggle("on", j === sizeIdx)); };
     });
   }
+}
+
+/* ---- ink selection (lasso) ----
+   Circle strokes with the pencil to select them, then move / resize / recolor / highlight /
+   duplicate / delete them. Everything operates on the same stroke objects the canvas already
+   stores, so a selection edit is just a normal note save — nothing new on disk. */
+
+// ray-casting point-in-polygon: counts how many polygon edges a ray to the right crosses
+function pointInPoly(x, y, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i].x, yi = poly[i].y, xj = poly[j].x, yj = poly[j].y;
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi + 1e-12) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+// a stroke counts as selected when most of it is inside the lasso — so clipping a stray
+// tail of a long stroke doesn't drag the whole thing along
+function strokesInLasso(strokeList, poly, ratio) {
+  const out = [];
+  if (!poly || poly.length < 3) return out;
+  strokeList.forEach((s, i) => {
+    const pts = s.points || [];
+    if (!pts.length) return;
+    let inside = 0;
+    for (const p of pts) if (pointInPoly(p.x, p.y, poly)) inside++;
+    if (inside / pts.length >= (ratio == null ? 0.6 : ratio)) out.push(i);
+  });
+  return out;
+}
+
+function strokesBBox(strokeList, idxs) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const i of idxs) {
+    for (const p of (strokeList[i] && strokeList[i].points) || []) {
+      if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x;
+      if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y;
+    }
+  }
+  if (x0 === Infinity) return null;
+  return { x0, y0, x1, y1, w: x1 - x0, h: y1 - y0, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 };
+}
+
+// scales the selected strokes around the selection's own centre, stroke width included,
+// so resized handwriting keeps its proportions
+function scaleStrokes(strokeList, idxs, factor, cx, cy) {
+  for (const i of idxs) {
+    const s = strokeList[i];
+    if (!s) continue;
+    s.points = (s.points || []).map((p) => ({ x: cx + (p.x - cx) * factor, y: cy + (p.y - cy) * factor, p: p.p }));
+    s.size = Math.max(0.5, (s.size || 2) * factor);
+  }
+}
+
+function translateStrokes(strokeList, idxs, dx, dy) {
+  for (const i of idxs) {
+    const s = strokeList[i];
+    if (!s) continue;
+    s.points = (s.points || []).map((p) => ({ x: p.x + dx, y: p.y + dy, p: p.p }));
+  }
+}
+
+let lassoOn = false;      // lasso tool active
+let lassoPts = null;      // polygon being drawn right now
+let inkSel = [];          // indices into active.strokes
+let inkDrag = null;       // {sx, sy, dx, dy} while dragging the selection
+
+function clearInkSelection() {
+  inkSel = []; lassoPts = null; inkDrag = null;
+  updateInkActions();
+  if ($("#cv")) { redraw(); clearLive(); }
 }
 
 /* ---- canvas ---- */
@@ -4032,13 +4182,21 @@ function drawStroke(ctx, s) {
 }
 
 // redraws ALL committed strokes onto the base canvas — called on load, undo, clear, and stroke commit
-// never called while the pen is moving so it doesn't matter how slow it is
-function redraw() {
+// never called while the pen is moving so it doesn't matter how slow it is.
+// `skip` (a Set of indices) leaves strokes off the base while they're being dragged on the
+// live canvas — that's what keeps a selection drag at one frame's cost instead of redrawing
+// every stroke in the note on every pointer move.
+function redraw(skip) {
   const cv = $("#cv"); if (!cv) return;
   const ctx = cv.getContext("2d");
   const dpr = window.devicePixelRatio || 1;
   ctx.clearRect(0, 0, cv.width / dpr, cv.height / dpr);
-  for (const s of (active ? active.strokes || [] : [])) drawStroke(ctx, s);
+  const all = active ? active.strokes || [] : [];
+  for (let i = 0; i < all.length; i++) {
+    if (skip && skip.has(i)) continue;
+    drawStroke(ctx, all[i]);
+  }
+  if (!inkDrag) drawSelectionOverlay(); // overlay lives on the live canvas; refresh it too
 }
 
 // draws only the current live stroke onto the top canvas — called on every pointer move via rAF
@@ -4049,7 +4207,60 @@ function drawLive() {
   const ctx = cvlive.getContext("2d");
   const dpr = window.devicePixelRatio || 1;
   ctx.clearRect(0, 0, cvlive.width / dpr, cvlive.height / dpr);
-  if (cur) drawStroke(ctx, cur);
+
+  if (cur) {
+    // predicted points are the browser's guess at where the pen is heading; drawing them
+    // hides a chunk of the hardware's input latency, and they're never saved
+    drawStroke(ctx, predPts.length ? { ...cur, points: cur.points.concat(predPts) } : cur);
+  }
+  if (lassoPts && lassoPts.length > 1) {
+    ctx.save();
+    ctx.setLineDash([6, 5]);
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = cssVar("--blue", "#7e9cd8");
+    ctx.beginPath();
+    ctx.moveTo(lassoPts[0].x, lassoPts[0].y);
+    for (const p of lassoPts) ctx.lineTo(p.x, p.y);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.restore();
+  }
+  if (inkDrag && inkSel.length) {
+    // the dragged strokes were left off the base canvas — draw them here, offset
+    ctx.save();
+    ctx.translate(inkDrag.dx, inkDrag.dy);
+    for (const i of inkSel) if (active.strokes[i]) drawStroke(ctx, active.strokes[i]);
+    ctx.restore();
+  }
+  drawSelectionOutline(ctx);
+}
+
+function cssVar(name, fallback) {
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return v || fallback;
+}
+
+// dashed box around the current selection, drawn on the live canvas
+function drawSelectionOutline(ctx) {
+  if (!inkSel.length || lassoPts) return;
+  const box = strokesBBox(active.strokes || [], inkSel);
+  if (!box) return;
+  const dx = inkDrag ? inkDrag.dx : 0, dy = inkDrag ? inkDrag.dy : 0;
+  const pad = 10;
+  ctx.save();
+  ctx.setLineDash([5, 4]);
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = cssVar("--blue", "#7e9cd8");
+  ctx.strokeRect(box.x0 - pad + dx, box.y0 - pad + dy, box.w + pad * 2, box.h + pad * 2);
+  ctx.restore();
+}
+
+function drawSelectionOverlay() {
+  const cvlive = $("#cvlive"); if (!cvlive) return;
+  const ctx = cvlive.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  ctx.clearRect(0, 0, cvlive.width / dpr, cvlive.height / dpr);
+  drawSelectionOutline(ctx);
 }
 
 function clearLive() {
@@ -4090,7 +4301,27 @@ function down(e) {
   }
   e.preventDefault();
   $("#cv").setPointerCapture(e.pointerId);
+
+  if (lassoOn) {
+    const pt = ptFrom(e);
+    const box = inkSel.length ? strokesBBox(active.strokes || [], inkSel) : null;
+    // starting inside an existing selection means "move it", anywhere else starts a new lasso
+    if (box && pt.x >= box.x0 - 14 && pt.x <= box.x1 + 14 && pt.y >= box.y0 - 14 && pt.y <= box.y1 + 14) {
+      inkDrag = { sx: pt.x, sy: pt.y, dx: 0, dy: 0 };
+      redraw(new Set(inkSel)); // lift the selection off the base canvas for the drag
+    } else {
+      inkSel = [];
+      lassoPts = [pt];
+      updateInkActions();
+      redraw();
+    }
+    drawing = true;
+    return;
+  }
+
   drawing = true;
+  predPts = [];
+  smoothPt = null;
   // pick size from eraser sizes or pen sizes depending on current mode;
   // marker strokes go extra wide (real highlighters are fat) and render translucent
   const strokeSize = erasing ? ERASER_SIZES[eraserSizeIdx].v : (markerOn ? SIZES[sizeIdx].v * 3.2 : SIZES[sizeIdx].v);
@@ -4110,14 +4341,55 @@ function move(e) {
   }
   if (!drawing) return;
   e.preventDefault();
-  const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
   const rect = $("#cv").getBoundingClientRect();
-  for (const ev of evs) {
-    // raw point — no smoothing here, bezier curves in drawStroke handle visual smoothness without adding lag
-    cur.points.push({ x: ev.clientX - rect.left, y: ev.clientY - rect.top, p: (ev.pressure && ev.pressure > 0) ? ev.pressure : 0.5 });
+
+  if (lassoOn) {
+    if (inkDrag) {
+      inkDrag.dx = e.clientX - rect.left - inkDrag.sx;
+      inkDrag.dy = e.clientY - rect.top - inkDrag.sy;
+    } else if (lassoPts) {
+      lassoPts.push({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    }
+    if (!liveRaf) liveRaf = requestAnimationFrame(drawLive);
+    return;
+  }
+
+  // coalesced events give every sample the hardware captured between frames (120Hz on an
+  // iPad) instead of just the latest one — that's what makes fast strokes smooth rather
+  // than a chain of straight segments
+  const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+  for (const ev of evs) cur.points.push(smoothPoint(ev, rect));
+  // predicted points render one frame ahead so the ink appears to keep up with the pen tip;
+  // they're live-canvas only and never committed (see up())
+  predPts = [];
+  if (e.getPredictedEvents) {
+    for (const ev of e.getPredictedEvents()) {
+      predPts.push({ x: ev.clientX - rect.left, y: ev.clientY - rect.top, p: lastPressure });
+    }
   }
   // schedule one draw per display frame — if move fires faster than the screen refreshes, extra events are batched
   if (!liveRaf) liveRaf = requestAnimationFrame(drawLive);
+}
+
+/* Light exponential smoothing. Raw pen samples jitter by a pixel or two, which the
+   variable-width rendering turns into visible lumps; POS_SMOOTH is deliberately small so
+   the ink still tracks the tip (heavy smoothing reads as lag), while pressure gets more
+   because width wobble is far more visible than a fraction of a pixel of position. */
+const POS_SMOOTH = 0.2, PRESSURE_SMOOTH = 0.5;
+let smoothPt = null, lastPressure = 0.5, predPts = [];
+
+function smoothPoint(ev, rect) {
+  const raw = { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+  const pressure = (ev.pressure && ev.pressure > 0) ? ev.pressure : 0.5;
+  if (!smoothPt) { smoothPt = { x: raw.x, y: raw.y }; lastPressure = pressure; }
+  else {
+    smoothPt = {
+      x: smoothPt.x * POS_SMOOTH + raw.x * (1 - POS_SMOOTH),
+      y: smoothPt.y * POS_SMOOTH + raw.y * (1 - POS_SMOOTH),
+    };
+    lastPressure = lastPressure * PRESSURE_SMOOTH + pressure * (1 - PRESSURE_SMOOTH);
+  }
+  return { x: smoothPt.x, y: smoothPt.y, p: lastPressure };
 }
 function momentum() {
   if (!scrollEl || Math.abs(scrollVel) < 0.5) { scrollVel = 0; return; }
@@ -4135,6 +4407,28 @@ function up() {
   if (!drawing) return;
   drawing = false;
   if (liveRaf) { cancelAnimationFrame(liveRaf); liveRaf = null; }
+
+  if (lassoOn) {
+    if (inkDrag) {
+      // bake the drag offset into the strokes themselves
+      if (inkDrag.dx || inkDrag.dy) {
+        translateStrokes(active.strokes || [], inkSel, inkDrag.dx, inkDrag.dy);
+        scheduleSave();
+      }
+      inkDrag = null;
+      sizeInkCanvas(); // moved ink may now sit lower than the canvas was tall
+      drawSelectionOverlay();
+    } else if (lassoPts) {
+      inkSel = strokesInLasso(active.strokes || [], lassoPts);
+      lassoPts = null;
+      updateInkActions();
+      redraw();
+    }
+    return;
+  }
+
+  predPts = [];
+  smoothPt = null;
   if (cur && cur.points.length) {
     active.strokes = (active.strokes || []).concat([cur]);
     strokeRedo = []; // a fresh stroke invalidates the redo branch, same rule as text undo
@@ -4272,7 +4566,13 @@ const HELP_SECTIONS = [
   ]},
   { title: "drawing", rows: [
     ["start drawing", "touch the page with an apple pencil — instantly, over your text. Or tap draw / press d"],
-    ["toolbar", "6 pen colors · 3 sizes · marker (translucent) · eraser · undo/redo · clear · done"],
+    ["toolbar", "15 pen colors · 3 sizes · marker (translucent) · eraser · select · undo/redo · clear · done"],
+    ["select ink", "tap select, then circle strokes with the pencil to lasso them"],
+    ["move ink", "drag from inside the selection box"],
+    ["resize ink", "A+ / A− scale the selected writing around its own centre, stroke width included"],
+    ["highlight ink", "turns selected strokes into translucent highlighter ink — press again to undo"],
+    ["recolor ink", "pick a pen colour, then press recolor to repaint the selection"],
+    ["duplicate / delete ink", "buttons on the selection bar"],
     ["palm rejection", "pen-only is on by default — a resting palm never draws; fingers scroll"],
     ["stroke undo", "Ctrl+Z in draw mode, or the toolbar buttons"],
   ]},
@@ -4436,6 +4736,7 @@ async function pollActiveNote() {
       // unified surface shows ink at all times — pull stroke changes from other devices live
       // (length compare is a cheap change detector: draw, undo and clear all change it)
       if ((fresh.strokes || []).length !== (active.strokes || []).length) {
+        if (inkSel.length) clearInkSelection(); // indices no longer mean anything
         active.strokes = fresh.strokes || [];
         if ($("#cv")) redraw();
       }
