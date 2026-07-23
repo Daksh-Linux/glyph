@@ -462,6 +462,13 @@ def export_zip(vault):
             for name in sorted(os.listdir(glyph_dir)):
                 if name.endswith(".json"):
                     z.write(os.path.join(glyph_dir, name), ".glyph/" + name)
+        # images too, under the same relative path the notes reference them by, so the
+        # unzipped folder opens in Obsidian with the pictures already wired up
+        att = os.path.join(vault, ATTACH_DIRNAME)
+        if os.path.isdir(att):
+            for name in sorted(os.listdir(att)):
+                if os.path.splitext(name)[1].lower() in IMAGE_TYPES:
+                    z.write(os.path.join(att, name), ATTACH_DIRNAME + "/" + name)
     return buf.getvalue()
 
 
@@ -671,6 +678,70 @@ def purge_note(vault, note_id):
             pass
 
 
+# --- image attachments ----------------------------------------------------
+# Images live as real files in <vault>/attachments/ and are referenced from the note with
+# ordinary markdown — ![](attachments/x.png) — so a vault opened in Obsidian shows the
+# pictures too. The type is decided by sniffing the actual bytes, never by the filename:
+# that stops anything that isn't really an image (html, svg, a script) from being stored
+# and later served back from our own origin.
+ATTACH_MAX_SIZE = 10 * 1024 * 1024
+ATTACH_DIRNAME = "attachments"
+IMAGE_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".gif": "image/gif",
+               ".webp": "image/webp"}
+
+
+def sniff_image_ext(blob):
+    """Magic-byte detection (imghdr was removed from the stdlib in 3.13). Returns an
+    extension we're willing to store, or None."""
+    if blob[:8] == b"\x89PNG\r\n\x1a\n":
+        return ".png"
+    if blob[:3] == b"\xff\xd8\xff":
+        return ".jpg"
+    if blob[:6] in (b"GIF87a", b"GIF89a"):
+        return ".gif"
+    if blob[:4] == b"RIFF" and blob[8:12] == b"WEBP":
+        return ".webp"
+    return None
+
+
+def attach_dir(vault):
+    d = os.path.join(vault, ATTACH_DIRNAME)
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+def _atomic_write_bytes(path, blob):
+    tmp = path + ".tmp"
+    with open(tmp, "wb") as f:
+        f.write(blob)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, path)
+
+
+def save_attachment(vault, blob):
+    ext = sniff_image_ext(blob)
+    if not ext:
+        raise ValueError("that file isn't a png, jpg, gif or webp image")
+    name = secrets.token_hex(8) + ext  # random name: no collisions, nothing user-controlled
+    _atomic_write_bytes(os.path.join(attach_dir(vault), name), blob)
+    return ATTACH_DIRNAME + "/" + name
+
+
+def attachment_path(vault, name):
+    """Resolve a requested attachment name safely — basename only, known extension only,
+    and the result must still sit inside the user's own attachments directory."""
+    safe = os.path.basename(name or "")
+    ext = os.path.splitext(safe)[1].lower()
+    if not safe or ext not in IMAGE_TYPES:
+        return None
+    d = attach_dir(vault)
+    full = os.path.realpath(os.path.join(d, safe))
+    if os.path.dirname(full) != os.path.realpath(d) or not os.path.isfile(full):
+        return None
+    return full
+
+
 # --- google keep import --------------------------------------------------
 # Takeout hands you a .zip (or .tgz) with one .json per Keep note (plus .html copies and
 # attachments). The JSON is the good path — it keeps checklists, labels, pins and archive
@@ -709,8 +780,10 @@ def tagify(label):
     return "#" + slug if slug else ""
 
 
-def keep_json_to_note(data):
-    """One Keep Takeout JSON object -> (title, markdown body, pinned)."""
+def keep_json_to_note(data, images=None):
+    """One Keep Takeout JSON object -> (title, markdown body, pinned).
+    `images` maps an attachment filename to the vault path it was saved at, so Keep photos
+    come across as real pictures rather than a note of their name."""
     title = (data.get("title") or "").strip()
     parts = []
 
@@ -730,13 +803,15 @@ def keep_json_to_note(data):
             mark = "x" if item.get("isChecked") else " "
             parts.append("- [%s] %s" % (mark, (item.get("text") or "").strip()))
 
-    # glyph has no image support yet, so name the attachments rather than dropping them
-    # silently — the files are still in the user's Takeout download
+    # attachments: embed the real picture when the archive carried it, otherwise name it so
+    # nothing disappears silently (the file is still in the user's Takeout download)
     atts = [a.get("filePath") for a in (data.get("attachments") or []) if a.get("filePath")]
     if atts:
         parts.append("")
         for f in atts:
-            parts.append("*keep attachment: %s*" % os.path.basename(f))
+            base = os.path.basename(f)
+            saved = (images or {}).get(base)
+            parts.append("![](%s)" % saved if saved else "*keep attachment: %s*" % base)
 
     tags = [tagify(l.get("name")) for l in (data.get("labels") or []) if l.get("name")]
     if data.get("isArchived"):
@@ -845,11 +920,19 @@ def import_keep_archive(vault, blob, parent_id=None):
         members = scoped
 
     json_notes, html_notes, txt_notes = [], [], []
+    images = {}  # keep attachment filename -> saved vault path
     for name, raw in members:
         low = name.lower()
         base = os.path.basename(low)
         if base.startswith(".") or base in ("labels.txt", "archive_browser.html"):
             continue  # Keep's own metadata files, not notes
+        if sniff_image_ext(raw):
+            # a photo attached to a Keep note — store it so the note can show it
+            try:
+                images[os.path.basename(name)] = save_attachment(vault, raw)
+            except (ValueError, OSError):
+                pass
+            continue
         if low.endswith(".json"):
             json_notes.append((name, raw))
         elif low.endswith(".html"):
@@ -874,7 +957,7 @@ def import_keep_archive(vault, blob, parent_id=None):
         if data.get("isTrashed"):
             skipped += 1
             continue
-        parsed.append(keep_json_to_note(data))
+        parsed.append(keep_json_to_note(data, images))
 
     # only fall back to the html/txt copies when the export had no json at all — Takeout
     # ships both, and importing each note twice is worse than importing it once
@@ -959,6 +1042,10 @@ wherever you want it (double-tap the grip to reset).
 
 - [ ] this is a to-do — the status bar is counting it right now
 - [ ] tables move like a spreadsheet: Tab next cell, Enter next row
+
+**images**: paste a screenshot, drag a photo in, or tap the ▣ button in
+the bar above the keyboard — on a phone that offers your camera and photo
+library. hover or tap an image for S / M / full width, or × to remove it.
 
 select text and a floating toolbar appears: **bold**, *italic*,
 ~~strike~~, `code`, ==highlight==, or turn the selection into a [[link]].
@@ -1203,6 +1290,22 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(graph_data(user_vault(user)))
         if path == "/api/stats":
             return self._json(vault_stats(user_vault(user)))
+        match = re.match(r"^/api/file/(.+)$", path)
+        if match:
+            full = attachment_path(user_vault(user), unquote(match.group(1)))
+            if not full:
+                return self._json({"error": "not found"}, 404)
+            with open(full, "rb") as f:
+                data = f.read()
+            self.send_response(200)
+            self.send_header("Content-Type", IMAGE_TYPES[os.path.splitext(full)[1].lower()])
+            self.send_header("Content-Length", str(len(data)))
+            # nosniff so a browser can never reinterpret a stored file as something executable
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header("Cache-Control", "private, max-age=31536000, immutable")  # names are random
+            self.end_headers()
+            self.wfile.write(data)
+            return
         if path == "/api/export.zip":
             data = export_zip(user_vault(user))
             self.send_response(200)
@@ -1225,6 +1328,24 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         path = urlparse(self.path).path
         ip = self.client_address[0]
+
+        # image upload — raw bytes, its own size ceiling (checked before the 2MB API cap)
+        if path == "/api/upload":
+            user = self._current_user()
+            if not user:
+                return self._json({"error": "unauthorized"}, 401)
+            if self._reject_oversized(ATTACH_MAX_SIZE):
+                return
+            blob = self._read_raw()
+            if not blob:
+                return self._json({"error": "no image received"}, 400)
+            try:
+                rel = save_attachment(user_vault(user), blob)
+            except ValueError as err:
+                return self._json({"error": str(err)}, 400)
+            except OSError as err:
+                return self._json({"error": "couldn't save image: %s" % err}, 500)
+            return self._json({"path": rel})
 
         # the Keep import uploads an archive, so it gets its own (much larger) size ceiling —
         # checked before the generic 2MB limit below would reject it

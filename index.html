@@ -368,6 +368,20 @@ body.zen .bar, body.zen .status, body.zen .kbar, body.zen .side, body.zen .backl
   body{background:#fff; color:#000;}
 }
 
+/* images */
+.block-img-wrap{position:relative; margin:8px 0; max-width:100%}
+.block-img{display:block; max-width:100%; height:auto; border-radius:8px; border:1px solid var(--line2)}
+.img-bar{position:absolute; top:8px; right:8px; display:flex; gap:3px; padding:3px;
+  background:var(--ink); border:1px solid var(--line); border-radius:7px; opacity:0; transition:opacity .12s}
+.block-img-wrap:hover .img-bar, .block-img-wrap:focus-within .img-bar{opacity:.96}
+.img-btn{border:none; background:none; color:var(--dim); font-size:11.5px; padding:5px 8px; border-radius:5px; cursor:pointer}
+.img-btn:hover{color:var(--text); background:var(--panel)}
+.img-btn.danger:hover{color:var(--red)}
+.img-err{color:var(--red); font-size:12px; padding:10px; border:1px dashed var(--red); border-radius:8px}
+.img-missing .block-img{display:none}
+/* on touch there is no hover — keep the controls visible so they're reachable */
+@media (hover:none){.img-bar{opacity:.9}}
+
 /* two-step import wizard */
 .step{border:1px solid var(--line2); border-radius:9px; padding:12px; margin-top:12px}
 .step-head{display:flex; align-items:center; gap:9px; font-size:13px; color:var(--text); font-weight:600; margin-bottom:10px}
@@ -2409,6 +2423,18 @@ function parseBlocks(md) {
       continue;
     }
 
+    // an image on its own line becomes an image block: ![alt](attachments/x.png).
+    // A trailing |NNN in the alt text is the display width (Obsidian uses the same idea
+    // for its own image links, and it stays valid markdown everywhere else).
+    m = line.match(/^!\[([^\]]*)\]\(([^)\s]+)\)\s*$/);
+    if (m) {
+      flushPara();
+      const alt = m[1], w = alt.match(/^(.*)\|(\d+)$/);
+      out.push({ id: uid(), type: "img", src: m[2], alt: w ? w[1] : alt, width: w ? +w[2] : null });
+      i++;
+      continue;
+    }
+
     m = line.match(/^(#{1,6})\s+(.*)$/);
     if (m) { flushPara(); out.push({ id: uid(), type: "h", level: m[1].length, text: m[2] }); i++; continue; }
 
@@ -2472,6 +2498,7 @@ function serializeBlocks(list) {
       }
       case "code": return "```" + (b.lang || "") + "\n" + b.text + "\n```";
       case "hr": return "---";
+      case "img": return "![" + (b.alt || "") + (b.width ? "|" + b.width : "") + "](" + b.src + ")";
       case "toggle": return "<details>\n<summary>" + (b.text || "") + "</summary>\n\n" + (b.body || "") + "\n\n</details>";
       case "table": {
         const header = "| " + b.header.join(" | ") + " |";
@@ -2723,6 +2750,66 @@ function handleMultilineInsertion(b, raw) {
   if (last) focusBlock(last.id);
 }
 
+/* ---- images ----
+   The file lives in the vault (<vault>/attachments/) and the note just references it with
+   ordinary markdown, so the picture is still there if you open the same vault in Obsidian
+   or unzip an export. Uploading returns that relative path; the browser fetches it back
+   through /api/file/, which is session-gated like everything else. */
+function imageUrl(src) {
+  return "/api/file/" + encodeURIComponent((src || "").split("/").pop());
+}
+
+async function uploadImage(file) {
+  const res = await fetch("/api/upload", { method: "POST", body: file });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "upload failed");
+  return data.path;
+}
+
+// puts an image block after `afterBlock` (or at the end), showing a placeholder row while
+// the upload is in flight so a big photo on a slow phone connection doesn't look frozen
+async function insertImageFile(file, afterBlock) {
+  if (!active || !file) return;
+  const placeholder = { id: uid(), type: "p", text: "uploading " + (file.name || "image") + "…" };
+  const i = afterBlock ? blocks.findIndex((x) => x.id === afterBlock.id) : blocks.length - 1;
+  const emptyHere = afterBlock && TEXT_TYPES.has(afterBlock.type) && !(afterBlock.text || "").trim();
+  if (emptyHere) blocks.splice(i, 1, placeholder); else blocks.splice(i + 1, 0, placeholder);
+  renderEditorBlocks();
+  try {
+    const path = await uploadImage(file);
+    const at = blocks.findIndex((x) => x.id === placeholder.id);
+    if (at === -1) return; // the note changed under us mid-upload
+    blocks.splice(at, 1, { id: uid(), type: "img", src: path, alt: "", width: null });
+    syncBody(); renderEditorBlocks(); scheduleInkResize();
+  } catch (e) {
+    const at = blocks.findIndex((x) => x.id === placeholder.id);
+    if (at !== -1) blocks.splice(at, 1);
+    renderEditorBlocks();
+    alert("couldn't add that image: " + e.message);
+  }
+}
+
+// the file picker used by the toolbar / slash menu. accept="image/*" makes phones offer
+// the camera and photo library directly.
+function pickImage(afterBlock) {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  input.multiple = true;
+  input.style.display = "none";
+  document.body.appendChild(input);
+  input.onchange = async () => {
+    const files = [...input.files];
+    input.remove();
+    let anchor = afterBlock;
+    for (const f of files) {
+      await insertImageFile(f, anchor);
+      anchor = blocks[blocks.length - 1]; // keep multiple picks in order
+    }
+  };
+  input.click();
+}
+
 /* ---- emoji shortcodes — type :fire: and get 🔥 the moment the closing : lands ---- */
 const EMOJI = {
   smile: "😄", joy: "😂", cry: "😢", sad: "😞", angry: "😠", cool: "😎", wink: "😉",
@@ -2824,6 +2911,47 @@ function renderBlockEl(b) {
       if (mode !== "insert") { mode = "insert"; setTimeout(() => { renderBar(); renderStatus(); }, 100); }
     });
     wrap.appendChild(ta);
+    return wrap;
+  }
+
+  if (b.type === "img") {
+    const wrap = document.createElement("div");
+    wrap.className = "block-img-wrap";
+    wrap.dataset.id = b.id;
+
+    const img = document.createElement("img");
+    img.className = "block-img";
+    img.src = imageUrl(b.src);
+    img.alt = b.alt || "";
+    img.loading = "lazy";
+    if (b.width) img.style.width = b.width + "px";
+    img.addEventListener("error", () => {
+      wrap.classList.add("img-missing");
+      if (!wrap.querySelector(".img-err")) {
+        const e = document.createElement("div");
+        e.className = "img-err";
+        e.textContent = "image not found: " + b.src;
+        wrap.appendChild(e);
+      }
+    });
+    wrap.appendChild(img);
+
+    // hover/tap controls: three widths and a remove button
+    const bar = document.createElement("div");
+    bar.className = "img-bar";
+    [["S", 260], ["M", 480], ["full", null]].forEach(([label, w]) => {
+      const btn = document.createElement("button");
+      btn.type = "button"; btn.className = "img-btn"; btn.textContent = label;
+      btn.title = "width: " + label;
+      btn.onclick = () => { b.width = w; syncBody(); renderEditorBlocks(); scheduleInkResize(); };
+      bar.appendChild(btn);
+    });
+    const rm = document.createElement("button");
+    rm.type = "button"; rm.className = "img-btn danger"; rm.textContent = "×";
+    rm.title = "remove image (the file stays in your vault)";
+    rm.onclick = () => removeBlock(b.id);
+    bar.appendChild(rm);
+    wrap.appendChild(bar);
     return wrap;
   }
 
@@ -3069,8 +3197,13 @@ function renderBlockEl(b) {
     if (!slashOpen) checkWikiTriggerCE(textEl, b); // one popup at a time — / wins over [[
   });
   textEl.addEventListener("paste", (e) => {
+    const cd = e.clipboardData || window.clipboardData;
+    // a pasted screenshot/photo arrives as a file on the clipboard, with no text at all —
+    // this used to fall through to insertText("") and silently do nothing
+    const imgFile = cd && [...(cd.files || [])].find((f) => f.type.startsWith("image/"));
+    if (imgFile) { e.preventDefault(); insertImageFile(imgFile, b); return; }
     e.preventDefault();
-    const text = (e.clipboardData || window.clipboardData).getData("text/plain");
+    const text = cd.getData("text/plain");
     const sel = getSelectionRange(textEl);
     // pasting a URL over selected text turns the selection into a markdown link (Notion behavior)
     if (sel.start !== sel.end && /^https?:\/\/\S+$/.test(text.trim())) {
@@ -3584,6 +3717,7 @@ const SLASH_ITEMS = [
   { label: "callout — warning", apply: (b) => { b.type = "callout"; b.kind = "warning"; b.body = ""; } },
   { label: "callout — danger", apply: (b) => { b.type = "callout"; b.kind = "danger"; b.body = ""; } },
   { label: "code block", apply: (b) => { b.type = "code"; b.lang = ""; } },
+  { label: "image / photo", run: (b) => pickImage(b) },
   { label: "divider", replace: () => ({ id: uid(), type: "hr" }) },
   { label: "table", replace: () => ({ id: uid(), type: "table", header: ["a", "b"], rows: [["", ""]] }) },
   { label: "toggle", replace: () => ({ id: uid(), type: "toggle", text: "", body: "" }) },
@@ -3630,6 +3764,13 @@ function runSlashItem(i) {
   const idx = blocks.findIndex((x) => x.id === b.id);
   if (idx === -1) return;
   b.text = ""; // eat the "/query" text — it was a command, not content
+  if (item.run) {
+    // an action rather than a block type (image picker) — clear the typed command first,
+    // then let it insert whatever it inserts relative to this block
+    syncBody(); renderEditorBlocks();
+    item.run(b);
+    return;
+  }
   if (item.replaceMany) {
     blocks.splice(idx, 1, ...item.replaceMany());
     syncBody(); renderEditorBlocks();
@@ -3696,6 +3837,22 @@ function renderMain() {
     setupBlockDrag();
     // pointer handlers live on the scroller permanently, in every mode — down() decides what a
     // pointer means: pen in text mode flips to draw and starts the stroke, fingers scroll, etc.
+    // dropping an image file anywhere on the note adds it (the block-drag handler above
+    // only deals with our own ⋮⋮ drags, which carry no files)
+    const surface = $("#noteScroll");
+    surface.addEventListener("dragover", (e) => {
+      if (e.dataTransfer && [...e.dataTransfer.types].includes("Files")) e.preventDefault();
+    });
+    surface.addEventListener("drop", (e) => {
+      const files = e.dataTransfer && [...(e.dataTransfer.files || [])].filter((f) => f.type.startsWith("image/"));
+      if (!files || !files.length) return;
+      e.preventDefault();
+      (async () => {
+        let anchor = currentBlock() || blocks[blocks.length - 1];
+        for (const f of files) { await insertImageFile(f, anchor); anchor = blocks[blocks.length - 1]; }
+      })();
+    });
+
     const scroll = $("#noteScroll");
     scroll.addEventListener("pointerdown", down);
     scroll.addEventListener("pointermove", move);
@@ -3861,6 +4018,7 @@ const KBAR_ITEMS = [
   { t: "&#9745;", title: "to-do checkbox", run: () => convertBlockType(currentBlock(), "todo") },
   { t: "&#10077;", title: "quote", run: () => convertBlockType(currentBlock(), "quote") },
   { div: true },
+  { t: "&#9635;", title: "add an image (photo or camera)", run: () => pickImage(currentBlock()) },
   { t: "&#9638;", title: "insert table", run: () => insertAfterBlock(currentBlock(), "table") },
   { t: "&#9656;", title: "insert toggle", run: () => insertAfterBlock(currentBlock(), "toggle") },
   { t: "&lt;/&gt;", title: "insert code block", run: () => insertAfterBlock(currentBlock(), "code") },
@@ -4884,6 +5042,7 @@ const HELP_SECTIONS = [
     ["tables", "Tab = next cell, Enter = next row (last row adds one), + buttons add rows/columns, × removes them"],
     ["callouts", "colored note/tip/warning/danger boxes — tap the icon to change type, ▾ to fold"],
     ["toggles", "collapsible sections — click the arrow, × to remove"],
+    ["images", "paste a screenshot, drag a photo in, or use the ▣ button / \"/image\" — on a phone that offers your camera and gallery. Hover an image for S / M / full width and ×"],
     ["code blocks", "language label, copy button, × to delete — Backspace when empty also removes it"],
     ["move blocks", "drag the ⋮⋮ handle (desktop), Alt+↑/↓, or the ↑↓ toolbar buttons"],
     ["empty space below", "tapping it starts a new paragraph there"],
