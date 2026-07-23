@@ -23,6 +23,7 @@ Storage layout (both next to this file):
 
 import hashlib
 import hmac
+import io
 import json
 import os
 import re
@@ -31,9 +32,10 @@ import shutil
 import socket
 import threading
 import time
+import zipfile
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlparse, unquote
+from urllib.parse import urlparse, unquote, parse_qs
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 USERS_ROOT = os.path.join(HERE, "users")
@@ -263,6 +265,7 @@ def parse(path, vault):
     note_id = None
     updated = None
     parent = None
+    pinned = False
     body = raw
     match = FRONTMATTER.match(raw)
     if match:
@@ -280,6 +283,8 @@ def parse(path, vault):
                         pass
                 elif key == "parent":
                     parent = value if value else None
+                elif key == "pinned":
+                    pinned = value.lower() in ("true", "1", "yes")
     title = os.path.basename(path)[:-3]
     if not note_id:
         # adopt notes created in Obsidian: derive a stable id from the path
@@ -287,7 +292,8 @@ def parse(path, vault):
         note_id = hashlib.sha1(rel.encode("utf-8")).hexdigest()[:8]
     if updated is None:
         updated = int(os.path.getmtime(path))
-    return {"id": note_id, "title": title, "updated": updated, "body": body, "parent": parent}
+    return {"id": note_id, "title": title, "updated": updated, "body": body,
+            "parent": parent, "pinned": pinned}
 
 
 def md_files(vault):
@@ -359,9 +365,76 @@ def list_meta(vault):
             "updated": note["updated"],
             "hasInk": os.path.exists(sidecar(vault, note["id"])),
             "parent": note.get("parent"),
+            "pinned": note.get("pinned", False),
         })
     items.sort(key=lambda x: x["updated"], reverse=True)
     return items
+
+
+def search_notes(vault, query, limit=20):
+    """Case-insensitive full-text search over every note's title + body.
+    Returns a one-line snippet around the first body match so the palette
+    can show WHY a note matched, not just that it did."""
+    q = (query or "").strip().lower()
+    if len(q) < 2:
+        return []
+    out = []
+    for path in md_files(vault):
+        try:
+            note = parse(path, vault)
+        except OSError:
+            continue
+        if q not in (note["title"] + "\n" + note["body"]).lower():
+            continue
+        snippet = ""
+        for line in note["body"].splitlines():
+            if q in line.lower():
+                snippet = line.strip()
+                pos = snippet.lower().find(q)
+                if len(snippet) > 90:
+                    start = max(0, pos - 30)
+                    snippet = ("…" if start else "") + snippet[start:start + 90] + "…"
+                break
+        out.append({"id": note["id"], "title": note["title"], "snippet": snippet})
+        if len(out) >= limit:
+            break
+    return out
+
+
+def graph_data(vault):
+    """Nodes = every note; links = resolved [[wiki-links]] between them (by title,
+    same resolution rule as backlinks). Feeds the graph-view modal."""
+    metas, bodies = [], {}
+    for path in md_files(vault):
+        try:
+            note = parse(path, vault)
+        except OSError:
+            continue
+        metas.append({"id": note["id"], "title": note["title"]})
+        bodies[note["id"]] = note["body"]
+    by_title = {m["title"].lower(): m["id"] for m in metas}
+    links = []
+    for m in metas:
+        for t in extract_links(bodies[m["id"]]):
+            tid = by_title.get(t.lower())
+            if tid and tid != m["id"]:
+                links.append({"source": m["id"], "target": tid})
+    return {"nodes": metas, "links": links}
+
+
+def export_zip(vault):
+    """The whole vault (notes + ink sidecars) as one zip, built in memory.
+    Notes are already plain markdown, so the export is Obsidian-ready as-is."""
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for path in md_files(vault):
+            z.write(path, os.path.basename(path))
+        glyph_dir = os.path.join(vault, ".glyph")
+        if os.path.isdir(glyph_dir):
+            for name in sorted(os.listdir(glyph_dir)):
+                if name.endswith(".json"):
+                    z.write(os.path.join(glyph_dir, name), ".glyph/" + name)
+    return buf.getvalue()
 
 
 def read_note(vault, note_id):
@@ -397,7 +470,7 @@ def would_create_cycle(vault, note_id, parent_id):
     return False
 
 
-def write_note(vault, note_id, title, body, strokes, parent=None):
+def write_note(vault, note_id, title, body, strokes, parent=None, pinned=False):
     if parent and would_create_cycle(vault, note_id, parent):
         parent = None  # refuse to create/preserve a parent cycle — drop to root instead
     old = find_path(vault, note_id)
@@ -406,6 +479,8 @@ def write_note(vault, note_id, title, body, strokes, parent=None):
     header = "---\nid: %s\nupdated: %d\n" % (note_id, int(time.time()))
     if parent:
         header += "parent: %s\n" % parent
+    if pinned:
+        header += "pinned: true\n"
     header += "---\n\n"
     with open(path, "w", encoding="utf-8") as f:
         f.write(header + (body or ""))
@@ -426,17 +501,116 @@ def write_note(vault, note_id, title, body, strokes, parent=None):
     return parse(path, vault)
 
 
+# --- trash ------------------------------------------------------------
+# Deleting a note moves it to vault/.trash/ instead of unlinking it, like
+# Notion's trash. md_files() never lists dot-directories, so trashed notes
+# vanish from every listing/search/backlink automatically. Auto-purged
+# after 30 days (checked lazily whenever the trash is listed).
+TRASH_KEEP_DAYS = 30
+
+
+def trash_dir(vault):
+    d = os.path.join(vault, ".trash")
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+def trash_files(vault):
+    d = os.path.join(vault, ".trash")
+    if not os.path.isdir(d):
+        return []
+    return [os.path.join(d, n) for n in sorted(os.listdir(d)) if n.endswith(".md")]
+
+
 def delete_note(vault, note_id):
     path = find_path(vault, note_id)
+    td = trash_dir(vault)
     if path and os.path.exists(path):
+        dest = os.path.join(td, os.path.basename(path))
+        base, i = os.path.basename(path)[:-3], 2
+        while os.path.exists(dest):
+            dest = os.path.join(td, "%s-%d.md" % (base, i))
+            i += 1
         try:
-            os.remove(path)
+            os.replace(path, dest)
+            os.utime(dest, None)  # rename keeps the old mtime; touch it so the 30-day
+                                  # purge clock starts at DELETION time, not creation time
         except OSError:
             pass
     side = sidecar(vault, note_id)
     if os.path.exists(side):
         try:
-            os.remove(side)
+            os.replace(side, os.path.join(td, os.path.basename(side)))
+        except OSError:
+            pass
+
+
+def purge_old_trash(vault):
+    cutoff = time.time() - TRASH_KEEP_DAYS * 86400
+    d = os.path.join(vault, ".trash")
+    if not os.path.isdir(d):
+        return
+    for name in os.listdir(d):
+        p = os.path.join(d, name)
+        try:
+            if os.path.getmtime(p) < cutoff:
+                os.remove(p)
+        except OSError:
+            pass
+
+
+def list_trash(vault):
+    purge_old_trash(vault)
+    items = []
+    for path in trash_files(vault):
+        try:
+            note = parse(path, vault)
+        except OSError:
+            continue
+        items.append({"id": note["id"], "title": note["title"],
+                      "deleted": int(os.path.getmtime(path))})
+    items.sort(key=lambda x: x["deleted"], reverse=True)
+    return items
+
+
+def find_trash_path(vault, note_id):
+    for path in trash_files(vault):
+        try:
+            if parse(path, vault)["id"] == note_id:
+                return path
+        except OSError:
+            continue
+    return None
+
+
+def restore_note(vault, note_id):
+    path = find_trash_path(vault, note_id)
+    if not path:
+        return None
+    note = parse(path, vault)
+    name = unique_name(vault, note["title"], note_id)  # a live note may have taken the title meanwhile
+    os.replace(path, os.path.join(vault, name))
+    trashed_side = os.path.join(vault, ".trash", os.path.basename(sidecar(vault, note_id)))
+    if os.path.exists(trashed_side):
+        try:
+            os.replace(trashed_side, sidecar(vault, note_id))
+        except OSError:
+            pass
+    return parse(os.path.join(vault, name), vault)
+
+
+def purge_note(vault, note_id):
+    """Delete forever — removes the note (and its ink) from the trash."""
+    path = find_trash_path(vault, note_id)
+    if path:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+    trashed_side = os.path.join(vault, ".trash", os.path.basename(sidecar(vault, note_id)))
+    if os.path.exists(trashed_side):
+        try:
+            os.remove(trashed_side)
         except OSError:
             pass
 
@@ -450,6 +624,11 @@ a terminal you can write in. plain text on the left, apple pencil on the right.
 
 a lot has been added since this note was first written — block editor,
 wiki-links, search, nested notes, and more. it's all below.
+
+> [!tip] the fastest way in
+> type `/` at the start of any line for the block menu, tap the + button
+> for templates (planners, trackers, calendars), and search anything with
+> Ctrl/Cmd-K — it looks inside every note, not just at titles.
 
 ## modes
 
@@ -672,6 +851,22 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"username": user})
         if path == "/api/notes":
             return self._json(list_meta(user_vault(user)))
+        if path == "/api/search":
+            q = parse_qs(urlparse(self.path).query).get("q", [""])[0]
+            return self._json(search_notes(user_vault(user), q))
+        if path == "/api/trash":
+            return self._json(list_trash(user_vault(user)))
+        if path == "/api/graph":
+            return self._json(graph_data(user_vault(user)))
+        if path == "/api/export.zip":
+            data = export_zip(user_vault(user))
+            self.send_response(200)
+            self.send_header("Content-Type", "application/zip")
+            self.send_header("Content-Disposition", 'attachment; filename="glyph-notes.zip"')
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+            return
         match = re.match(r"^/api/notes/([^/]+)/backlinks$", path)
         if match:
             return self._json(backlinks(user_vault(user), unquote(match.group(1))))
@@ -722,6 +917,15 @@ class Handler(BaseHTTPRequestHandler):
             drop_session(self._session_token())
             return self._json({"ok": True}, headers=[self._clear_cookie_header()])
 
+        # restoring from trash needs a session, unlike the public auth/contact routes above
+        match = re.match(r"^/api/trash/([^/]+)/restore$", path)
+        if match:
+            user = self._current_user()
+            if not user:
+                return self._json({"error": "unauthorized"}, 401)
+            note = restore_note(user_vault(user), unquote(match.group(1)))
+            return self._json(note) if note else self._json({"error": "not found"}, 404)
+
         if path == "/api/contact":
             if is_contact_locked(ip):
                 return self._json({"error": "too many messages sent, try again later"}, 429)
@@ -757,6 +961,7 @@ class Handler(BaseHTTPRequestHandler):
                 data.get("body", ""),
                 data.get("strokes", []),
                 data.get("parent") or None,
+                bool(data.get("pinned")),
             )
             self._json(note)
         except Exception as err:  # noqa: BLE001 - report any failure to the client
@@ -778,6 +983,14 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"error": "wrong password"}, 401)
             delete_user(user)
             return self._json({"ok": True}, headers=[self._clear_cookie_header()])
+
+        match = re.match(r"^/api/trash/([^/]+)$", path)
+        if match:
+            # "delete forever" — removes from the trash, no way back after this
+            purge_note(user_vault(user), unquote(match.group(1)))
+            self.send_response(204)
+            self.end_headers()
+            return
 
         match = re.match(r"^/api/notes/([^/]+)$", path)
         if not match:

@@ -13,10 +13,14 @@ Every "note-taking app" I tried wanted to sync my thoughts to someone else's ser
 ## Features
 
 ### Writing
-- **Block editor** — Notion-style editing: headings, bullet/numbered lists, to-do checkboxes, quotes, code blocks, tables, collapsible toggles, dividers. Everything is still plain markdown underneath
-- **Slash menu** — type `/` at the start of a line to insert any block type, a calendar for the current month, or today's date
-- **Markdown shortcuts** — type `# `, `- `, `1. `, `- [ ] `, `> `, or ``` and the block converts as you type
-- **Inline formatting** — `**bold**`, `*italic*`, `~~strike~~`, `` `code` ``, `==highlight==`, clickable `[links](https://...)`
+- **Block editor** — Notion-style editing: headings (H1–H6), bullet/numbered lists, to-do checkboxes, quotes, callouts, code blocks, tables, collapsible toggles, dividers. Everything is still plain markdown underneath
+- **Slash menu** — type `/` at the start of a line to insert any block type, a callout, a calendar for the current month, or today's date
+- **Callouts** — Obsidian's `> [!note]` / `[!tip]` / `[!warning]` / `[!danger]` boxes, tap the icon to switch type
+- **Markdown shortcuts** — type `# `, `- `, `1. `, `- [ ] `, `> `, `---`, `> [!tip] `, or ``` and the block converts as you type
+- **Inline formatting** — `**bold**`, `*italic*`, `~~strike~~`, `` `code` ``, `==highlight==`, `[links](https://...)`, bare URLs, and `#tags` (tap a tag to search it)
+- **Smart tables** — Tab/Enter move between cells like a spreadsheet, Enter on the last row adds one, sticky header row
+- **Smart paste** — pasting multi-line markdown creates real blocks; pasting a URL over selected text makes a link
+- **Code blocks** — language label, one-tap copy, delete button
 - **Keyboard bar** — a formatting toolbar with every block type, undo/redo, move/duplicate/delete block, indent/outdent; on iPad and Android it floats right above the on-screen keyboard
 - **Undo / redo** — real history for text (`Ctrl+Z` / `Ctrl+Shift+Z`) and for pen strokes, independently per note
 - **Connected notes** — `[[link]]` between notes with autocomplete, plus a backlinks panel showing what links here
@@ -27,18 +31,30 @@ Every "note-taking app" I tried wanted to sync my thoughts to someone else's ser
 - **Pens, marker, eraser** — six pen colors, three sizes, a translucent highlighter marker, an eraser with its own sizes, stroke undo/redo
 
 ### Planning (templates)
-- **New note from a template** — daily planner, weekly planner, monthly calendar (generated for the actual month), money planner, habit tracker, goal tracker, project tracker, reading list, meal planner, workout log
-- **To-do progress** — the status bar counts your checkboxes ("3/7 ✓")
+- **New note from a template** — tap + and pick: daily planner, weekly planner, monthly calendar (generated for the actual month), money planner, habit tracker, goal tracker, project tracker, reading list, meal planner, workout log, travel planner, study notes, weekly review
+- **Daily note** — one command opens (or creates) today's planner, Obsidian-style
+- **To-do progress** — the status bar counts your checkboxes ("3/7 ✓"), plus check/uncheck-all commands
+
+### Organizing & finding
+- **Full-text search** — `Ctrl/Cmd+K` searches *inside* every note, with a snippet showing why it matched
+- **Graph view** — see every note and the `[[links]]` between them, tap a dot to jump
+- **Outline** — jump between a long note's headings
+- **Pin notes** — pinned notes stick to the top of the sidebar with a ★
+- **Move note into…** — nest any note under any other (or back to top level) without dragging
+- **Trash** — deleted notes are recoverable for 30 days, then purge automatically; "delete forever" if you're sure
+- **Note info** — words, blocks, to-dos, reading time, last-updated, backlink count
+- **Copy link to note** — a URL that reopens exactly that note on any of your devices
 
 ### Everything else
 - **Multi-user** — open signup, each account gets an isolated vault (`users/<username>/vault/`)
-- **Command palette** — `Ctrl/Cmd+K` searches every note, action and template with fuzzy matching
+- **Command palette** — `Ctrl/Cmd+K` (or `P`, or `O`) searches every note, action and template with fuzzy matching
 - **Three modes** — `normal` (vim-like keys), `insert` (editing), `draw` (pen canvas)
 - **Light & dark themes** — a Kanagawa-inspired dark terminal theme and a light theme, toggle in the top bar, preference saved per device
 - **Offline-first** — every keystroke saves to `localStorage` immediately; syncs to the server when back online; live sync between your devices every 2s
 - **Reopens where you left off** — the last note you viewed comes back after a reload
 - **Local files** — open and edit a real file from your disk, or pull it into your vault as a note
-- **Export** — download any note as a `.md` file, or duplicate it (ink included)
+- **Export** — download any note as `.md`, the whole vault as a `.zip`, or duplicate a note (ink included)
+- **Layout preferences** — small text, centered narrow page, spellcheck on/off — each remembered per device
 - **PWA** — installable on iOS/Android/desktop, works offline
 - **Self-service account deletion** — delete your account and every note in it yourself, no need to ask
 - **Plain-language [privacy & terms](https://glyph.dakshhq.com/legal)** — written by the person who runs it, not a lawyer

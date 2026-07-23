@@ -223,6 +223,82 @@ svg{display:block}
 .md-link{color:var(--green); text-decoration:underline; cursor:pointer}
 .md-link:hover{color:var(--blue)}
 
+/* headings 4-6 (Obsidian supports the full range) */
+.block-h4{font-size:1.02em; font-weight:700; margin-top:.3em;}
+.block-h5{font-size:.95em; font-weight:700; margin-top:.3em; color:var(--dim);}
+.block-h6{font-size:.9em; font-weight:700; margin-top:.3em; color:var(--dim); text-transform:uppercase; letter-spacing:.04em;}
+
+/* callout blocks — Obsidian's `> [!note]` syntax, Notion's callout look */
+.callout{border-left:3px solid var(--blue); background:color-mix(in srgb, var(--blue) 8%, transparent);
+  border-radius:0 6px 6px 0; padding:8px 12px; margin:4px 0;}
+.callout-head{display:flex; align-items:center; gap:8px; font-weight:600;}
+.callout-icon{flex:0 0 auto;}
+.callout-title{outline:none; flex:1; min-width:0;}
+.callout-title:empty::before{content:attr(data-placeholder); color:var(--faint);}
+.callout-rm{flex:0 0 auto; border:none; background:none; color:var(--dim); font-size:14px; cursor:pointer;
+  border-radius:3px; opacity:0; width:18px; height:18px;}
+.callout:hover .callout-rm{opacity:1;}
+.callout-rm:hover{color:var(--red); background:var(--panel);}
+.callout-body{display:block; width:100%; background:none; border:none; color:var(--text);
+  font-family:var(--mono); font-size:15px; line-height:1.6; padding:6px 0 2px; resize:vertical;
+  box-sizing:border-box; min-height:1.8em; outline:none;}
+.callout-tip{border-left-color:var(--green); background:color-mix(in srgb, var(--green) 8%, transparent);}
+.callout-tip .callout-head{color:var(--green);}
+.callout-warning{border-left-color:var(--yellow); background:color-mix(in srgb, var(--yellow) 8%, transparent);}
+.callout-warning .callout-head{color:var(--yellow);}
+.callout-danger{border-left-color:var(--red); background:color-mix(in srgb, var(--red) 8%, transparent);}
+.callout-danger .callout-head{color:var(--red);}
+.callout-note .callout-head{color:var(--blue);}
+
+/* code block header: language field + copy + delete — the missing way to remove </> */
+.code-head{display:flex; align-items:center; gap:6px; background:var(--panel);
+  border:1px solid var(--line); border-bottom:none; border-radius:6px 6px 0 0; padding:3px 6px;}
+.code-lang{width:90px; background:none; border:none; outline:none; color:var(--dim);
+  font-family:var(--mono); font-size:11.5px;}
+.code-lang:focus{color:var(--text);}
+.code-btn{border:none; background:none; color:var(--dim); font-size:11.5px; padding:2px 8px;
+  border-radius:4px; cursor:pointer;}
+.code-btn:hover{color:var(--text); background:var(--ink);}
+.code-btn.danger:hover{color:var(--red);}
+.block-code-wrap .block-code-ta{border-radius:0 0 6px 6px;}
+
+/* #tags — Obsidian-style chips */
+.tag-chip{color:var(--mauve); background:color-mix(in srgb, var(--mauve) 12%, transparent);
+  border-radius:10px; padding:0 7px; font-size:.88em; cursor:pointer;}
+.tag-chip:hover{background:color-mix(in srgb, var(--mauve) 25%, transparent);}
+
+/* sticky table headers while scrolling a long table */
+.block-table th{position:sticky; top:0; z-index:2;}
+
+/* page layout toggles (persisted per device) */
+#blockEditor.narrow-page{max-width:760px; margin:0 auto;}
+#blockEditor.small-text{font-size:14px;}
+
+/* palette content-match snippets */
+.palette-list li .snippet{display:block; color:var(--dim); font-size:11px; margin-top:2px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.palette-list li .liwrap{flex:1; min-width:0; overflow:hidden;}
+
+/* generic picker rows (template menu, trash, outline, move-to) */
+.pick-list{list-style:none; margin:10px 0 0; padding:0; max-height:50vh; overflow-y:auto;}
+.pick-list li{display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:6px;
+  cursor:pointer; font-size:13.5px; color:var(--text);}
+.pick-list li:hover{background:var(--panel);}
+.pick-list li .kind{color:var(--dim); font-size:11px; flex:0 0 auto;}
+.pick-list li .grow{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.pick-list li .sub{color:var(--faint); font-size:11px; flex:0 0 auto;}
+.pick-list li button{border:1px solid var(--line); background:none; color:var(--dim); font-size:11.5px;
+  border-radius:5px; padding:3px 8px; cursor:pointer; flex:0 0 auto;}
+.pick-list li button:hover{color:var(--text); border-color:var(--blue);}
+.pick-list li button.danger:hover{color:var(--red); border-color:var(--red);}
+.pick-input{width:100%; background:var(--panel); border:1px solid var(--line); color:var(--text);
+  border-radius:6px; padding:8px 10px; font-family:var(--mono); font-size:13px; outline:none; box-sizing:border-box;}
+.pick-input:focus{border-color:var(--blue);}
+.modal .hint{color:var(--faint); font-size:11.5px; margin-top:10px;}
+#graphCanvas{width:100%; border:1px solid var(--line2); border-radius:6px; background:var(--ink);
+  cursor:pointer; display:block; margin-top:10px;}
+.row .pin{color:var(--yellow); font-size:11px; flex:0 0 auto;}
+
 /* keyboard-shortcuts help modal */
 .modal.wide{max-width:440px; max-height:80vh; overflow-y:auto}
 .sc-row{display:flex; justify-content:space-between; gap:14px; font-size:12.5px; padding:4px 0; border-bottom:1px solid var(--line2)}
@@ -504,7 +580,7 @@ const LC = {
 // accounts logging into the same browser never see each other's cache
 function lcSaveNote(note) { LC.set("glyph:" + ME + ":n:" + note.id, note); }
 function lcLoadNote(id) { return LC.get("glyph:" + ME + ":n:" + id); }
-function lcSaveList(arr) { LC.set("glyph:" + ME + ":list", arr.map(n => ({ id:n.id, title:n.title, updated:n.updated, parent:n.parent||null }))); }
+function lcSaveList(arr) { LC.set("glyph:" + ME + ":list", arr.map(n => ({ id:n.id, title:n.title, updated:n.updated, parent:n.parent||null, pinned:!!n.pinned }))); }
 function lcLoadList() { return LC.get("glyph:" + ME + ":list") || []; }
 
 function lcPending() { return new Set(LC.get("glyph:" + ME + ":pending") || []); }
@@ -525,7 +601,8 @@ async function syncPending() {
     if (!note) { lcClearPending(id); continue; }
     try {
       const saved = await api("PUT", "/api/notes/" + encodeURIComponent(id),
-        { title: note.title, body: note.body, strokes: note.strokes || [], parent: note.parent || null });
+        { title: note.title, body: note.body, strokes: note.strokes || [],
+          parent: note.parent || null, pinned: !!note.pinned });
       lcSaveNote({ ...note, updated: saved.updated });
       lcClearPending(id);
       if (active && active.id === id) { active.updated = saved.updated; }
@@ -585,6 +662,8 @@ async function openNote(id) {
   backlinksData = [];
   resetHistory(); // undo history is per-note — never undo note A's edits into note B
   LC.set("glyph:" + ME + ":last", active.id); // remembered across reloads (see boot)
+  // keep the URL pointing at this note so refresh/share-to-self lands back here
+  try { history.replaceState(null, "", "#/n/" + encodeURIComponent(active.id)); } catch (e) {}
   renderMain(); renderBar(); renderList(); renderStatus();
   loadBacklinks(active.id);
 }
@@ -634,7 +713,8 @@ async function saveNow() {
   clearTimeout(saveTimer);
   try {
     const saved = await api("PUT", "/api/notes/" + encodeURIComponent(active.id),
-      { title: active.title, body: active.body, strokes: active.strokes || [], parent: active.parent || null });
+      { title: active.title, body: active.body, strokes: active.strokes || [],
+        parent: active.parent || null, pinned: !!active.pinned });
     active.id = saved.id; activeId = saved.id; active.title = saved.title; active.updated = saved.updated;
     lcSaveNote(active); lcClearPending(active.id);
     saveStatus = "saved"; setOnline(true); renderStatus(); renderBar();
@@ -769,7 +849,36 @@ const TEMPLATES = [
     "# meals this week\n\n| day | breakfast | lunch | dinner |\n| --- | --- | --- | --- |\n| mon |  |  |  |\n| tue |  |  |  |\n| wed |  |  |  |\n| thu |  |  |  |\n| fri |  |  |  |\n| sat |  |  |  |\n| sun |  |  |  |\n\n## grocery list\n\n- [ ] " },
   { name: "workout log", body: () =>
     "# workouts\n\n## " + todayStr() + "\n\n| exercise | sets | reps | weight |\n| --- | --- | --- | --- |\n|  |  |  |  |\n\n## notes\n" },
+  { name: "travel planner", body:
+    "# trip\n\n> [!tip] before booking\n> compare dates ±2 days — flights swing a lot\n\n## itinerary\n\n| day | place | stay | plan |\n| --- | --- | --- | --- |\n|  |  |  |  |\n\n## budget\n\n| item | est | actual |\n| --- | --- | --- |\n| flights |  |  |\n| stay |  |  |\n| food |  |  |\n\n## packing\n\n- [ ] passport / id\n- [ ] chargers\n- [ ] " },
+  { name: "study notes", body:
+    "# subject\n\n> [!note] source\n> lecture / chapter / video link\n\n## key ideas\n\n- \n\n## questions\n\n- [ ] \n\n## summary in my own words\n\n" },
+  { name: "weekly review", body: () =>
+    "# weekly review — " + todayStr() + "\n\n## what went well\n\n- \n\n## what didn't\n\n- \n\n## carried over\n\n- [ ] \n\n> [!tip] one change for next week\n> " },
 ];
+
+// find (or create from the daily template) a note titled with today's date — Obsidian's
+// "daily note" habit: one keystroke-free journal entry per day
+async function openDailyNote() {
+  const title = todayStr();
+  const existing = notes.find((n) => (n.title || "").toLowerCase() === title.toLowerCase());
+  if (existing) { await openNote(existing.id); return; }
+  await newNote(null, { name: title, body: TEMPLATES[0].body });
+}
+
+/* ---- per-device editor preferences (small text / page width / spellcheck) ---- */
+function readPref(key, dflt) { try { const v = localStorage.getItem("glyph:" + key); return v === null ? dflt : v === "1"; } catch (e) { return dflt; } }
+function setPref(key, v) { try { localStorage.setItem("glyph:" + key, v ? "1" : "0"); } catch (e) {} }
+let smallText = readPref("smallText", false);
+let narrowPage = readPref("narrowPage", false);
+let spellcheckOn = readPref("spellcheck", false);
+
+function applyEditorPrefs() {
+  const host = $("#blockEditor");
+  if (!host) return;
+  host.classList.toggle("small-text", smallText);
+  host.classList.toggle("narrow-page", narrowPage);
+}
 
 /* ---- local files ----
    Completely separate from the notes vault: opens/saves a real file on disk from the browser.
@@ -953,13 +1062,13 @@ function renderBar() {
   $("#menuBtn").onclick = openSidebar;
   $("#tabI").onclick = () => { if (active) setMode("insert"); };
   $("#tabD").onclick = () => { if (active) setMode("draw"); };
-  $("#newBtn").onclick = () => newNote();
+  $("#newBtn").onclick = () => openNewNoteMenu(); // asks blank-or-template (see openNewNoteMenu)
   // clicking anywhere in the pill (icon included) focuses the input; focusing it (by click, by
   // Tab, or via Cmd/Ctrl-K below) opens the results dropdown — see openPalette()
   const searchInput = $("#searchBarInput");
   $("#searchBar").onclick = () => searchInput.focus();
   searchInput.onfocus = openPalette;
-  searchInput.oninput = () => renderPaletteResults(searchInput.value);
+  searchInput.oninput = () => { renderPaletteResults(searchInput.value); kickFullTextSearch(searchInput.value); };
   searchInput.onkeydown = (e) => {
     if (e.key === "ArrowDown") { e.preventDefault(); paletteSel = Math.min(paletteSel + 1, paletteFiltered.length - 1); paintPaletteSelection(); }
     else if (e.key === "ArrowUp") { e.preventDefault(); paletteSel = Math.max(paletteSel - 1, 0); paintPaletteSelection(); }
@@ -1001,7 +1110,8 @@ function buildTree(notesList) {
     if (n.parent && byId[n.parent] && !isDescendantOf(byId, n.id, n.parent)) byId[n.parent].children.push(byId[n.id]);
     else roots.push(byId[n.id]);
   });
-  const sortFn = arr => { arr.sort((a, b) => b.updated - a.updated); arr.forEach(n => sortFn(n.children)); };
+  // pinned notes float to the top of their level (★), most-recent first within each group
+  const sortFn = arr => { arr.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.updated - a.updated); arr.forEach(n => sortFn(n.children)); };
   sortFn(roots);
   return roots;
 }
@@ -1031,6 +1141,7 @@ function renderTreeNodes(nodesArr, depth) {
       '<li class="row' + (sel ? " sel" : "") + '" data-id="' + esc(n.id) + '" style="padding-left:' + pl + 'px">' +
         toggle +
         '<span class="name">' + esc(n.title || "untitled") + "</span>" +
+        (n.pinned ? '<span class="pin" title="pinned">★</span>' : "") +
         (n.hasInk ? '<span class="ink" title="has a sketch">✦</span>' : "") +
         '<button class="addchild" data-par="' + esc(n.id) + '" aria-label="New note inside" title="New note inside">+</button>' +
         '<button class="del" data-del="' + esc(n.id) + '" aria-label="Delete note">' + ICONS.trash + "</button>" +
@@ -1074,7 +1185,7 @@ function renderList() {
     if (tog) { e.stopPropagation(); toggleExpand(tog.getAttribute("data-tog")); return; }
     if (row) { openNote(row.getAttribute("data-id")); closeSidebar(); }
   });
-  $("#newRow").onclick = () => newNote();
+  $("#newRow").onclick = () => { closeSidebar(); openNewNoteMenu(); };
   $("#openFileRow").onclick = () => openLocalFile();
   const syncRow = $("#syncGlyphRow"); if (syncRow) syncRow.onclick = () => syncLocalFileToNote();
   $("#moreToggle").onclick = () => { sideMoreOpen = !sideMoreOpen; renderList(); };
@@ -1141,6 +1252,221 @@ function openDeleteAccountModal() {
   };
 }
 
+/* ---- picker & info modals (all share #modalScrim, same as delete-account) ---- */
+
+// "new note" now asks what kind — blank, or any template. Tapping + used to silently
+// make a blank note, which meant nobody ever found the templates.
+function openNewNoteMenu(parentId) {
+  const scrim = $("#modalScrim");
+  scrim.innerHTML =
+    '<div class="modal wide"><h2 style="color:var(--blue)">new note</h2>' +
+    '<ul class="pick-list">' +
+      '<li data-tpl="-1"><span class="kind">blank</span><span class="grow">empty note</span></li>' +
+      TEMPLATES.map((t, i) =>
+        '<li data-tpl="' + i + '"><span class="kind">tpl</span><span class="grow">' + esc(t.name) + '</span></li>').join("") +
+    '</ul></div>';
+  scrim.hidden = false;
+  scrim.onclick = (e) => { if (e.target === scrim) closeModal(); };
+  scrim.querySelectorAll("[data-tpl]").forEach((li) => {
+    li.onclick = () => {
+      const i = +li.getAttribute("data-tpl");
+      closeModal();
+      newNote(parentId || null, i >= 0 ? TEMPLATES[i] : undefined);
+    };
+  });
+}
+
+// outline — every heading in the open note, tap to jump (Obsidian's outline pane)
+function openOutlineModal() {
+  if (!active) return;
+  const heads = blocks.filter((x) => x.type === "h");
+  const scrim = $("#modalScrim");
+  scrim.innerHTML =
+    '<div class="modal wide"><h2 style="color:var(--blue)">outline</h2>' +
+    (heads.length
+      ? '<ul class="pick-list">' + heads.map((h) =>
+          '<li data-h="' + esc(h.id) + '" style="padding-left:' + (10 + (h.level - 1) * 16) + 'px">' +
+          '<span class="kind">h' + h.level + '</span><span class="grow">' + esc(h.text || "untitled") + '</span></li>').join("") + "</ul>"
+      : '<p>no headings in this note yet.</p>') +
+    '</div>';
+  scrim.hidden = false;
+  scrim.onclick = (e) => { if (e.target === scrim) closeModal(); };
+  scrim.querySelectorAll("[data-h]").forEach((li) => {
+    li.onclick = () => {
+      closeModal();
+      const el = $("#blockEditor") && $("#blockEditor").querySelector('[data-id="' + li.getAttribute("data-h") + '"]');
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+  });
+}
+
+// note info — the stats panel (words, blocks, todos, reading time, dates, backlinks)
+function openNoteInfoModal() {
+  if (!active) return;
+  const words = active.body.trim() ? active.body.trim().split(/\s+/).length : 0;
+  const todoTotal = (active.body.match(/^\s*- \[[ xX]\]/gm) || []).length;
+  const todoDone = (active.body.match(/^\s*- \[[xX]\]/gm) || []).length;
+  const rows = [
+    ["words", String(words)],
+    ["characters", String(active.body.length)],
+    ["blocks", String(blocks.length)],
+    ["to-dos", todoTotal ? todoDone + " / " + todoTotal + " done" : "none"],
+    ["reading time", "~" + Math.max(1, Math.round(words / 200)) + " min"],
+    ["ink strokes", String((active.strokes || []).length)],
+    ["last updated", new Date((active.updated || 0) * 1000).toLocaleString()],
+    ["links here", String(backlinksData.length)],
+    ["pinned", active.pinned ? "yes" : "no"],
+  ];
+  const scrim = $("#modalScrim");
+  scrim.innerHTML =
+    '<div class="modal wide"><h2 style="color:var(--blue)">' + esc(active.title || "untitled") + '</h2>' +
+    rows.map((r) => '<div class="sc-row"><span>' + esc(r[0]) + '</span><kbd>' + esc(r[1]) + '</kbd></div>').join("") +
+    '</div>';
+  scrim.hidden = false;
+  scrim.onclick = (e) => { if (e.target === scrim) closeModal(); };
+}
+
+// trash — deleted notes wait here for 30 days; restore or delete forever
+async function openTrashModal() {
+  let items = [];
+  try { items = await api("GET", "/api/trash"); } catch (e) {}
+  const scrim = $("#modalScrim");
+  scrim.innerHTML =
+    '<div class="modal wide"><h2 style="color:var(--blue)">trash</h2>' +
+    (items.length
+      ? '<ul class="pick-list">' + items.map((t) =>
+          '<li><span class="grow">' + esc(t.title) + '</span>' +
+          '<span class="sub">' + new Date(t.deleted * 1000).toLocaleDateString() + '</span>' +
+          '<button data-restore="' + esc(t.id) + '">restore</button>' +
+          '<button class="danger" data-purge="' + esc(t.id) + '">delete forever</button></li>').join("") + "</ul>"
+      : "<p>trash is empty.</p>") +
+    '<div class="hint">deleted notes stay here for 30 days, then they\'re gone for good.</div></div>';
+  scrim.hidden = false;
+  scrim.onclick = (e) => { if (e.target === scrim) closeModal(); };
+  scrim.querySelectorAll("[data-restore]").forEach((btn) => {
+    btn.onclick = async () => {
+      try { await api("POST", "/api/trash/" + encodeURIComponent(btn.getAttribute("data-restore")) + "/restore"); } catch (e) {}
+      await loadList();
+      openTrashModal(); // re-render the remaining items
+    };
+  });
+  scrim.querySelectorAll("[data-purge]").forEach((btn) => {
+    btn.onclick = async () => {
+      if (!confirm("delete forever? this can't be undone.")) return;
+      try { await api("DELETE", "/api/trash/" + encodeURIComponent(btn.getAttribute("data-purge"))); } catch (e) {}
+      openTrashModal();
+    };
+  });
+}
+
+// move the open note into another note (or back to root) — nesting without drag & drop
+function openMoveNoteModal() {
+  if (!active) return;
+  // a note can't move into itself or its own descendants (that would orphan the subtree)
+  const blocked = new Set([active.id]);
+  let grew = true;
+  while (grew) {
+    grew = false;
+    notes.forEach((n) => { if (n.parent && blocked.has(n.parent) && !blocked.has(n.id)) { blocked.add(n.id); grew = true; } });
+  }
+  const scrim = $("#modalScrim");
+  const candidates = notes.filter((n) => !blocked.has(n.id));
+  scrim.innerHTML =
+    '<div class="modal wide"><h2 style="color:var(--blue)">move "' + esc(active.title) + '" into…</h2>' +
+    '<input class="pick-input" id="movePickFilter" placeholder="filter notes…">' +
+    '<ul class="pick-list" id="movePickList"></ul></div>';
+  scrim.hidden = false;
+  scrim.onclick = (e) => { if (e.target === scrim) closeModal(); };
+  const paint = (q) => {
+    const list = (q ? candidates.filter((n) => fuzzyScore(q, n.title) >= 0) : candidates).slice(0, 30);
+    $("#movePickList").innerHTML =
+      (active.parent ? '<li data-mv=""><span class="kind">root</span><span class="grow">move to top level</span></li>' : "") +
+      list.map((n) => '<li data-mv="' + esc(n.id) + '"><span class="kind">note</span><span class="grow">' + esc(n.title) + "</span></li>").join("");
+    scrim.querySelectorAll("[data-mv]").forEach((li) => {
+      li.onclick = () => {
+        active.parent = li.getAttribute("data-mv") || null;
+        closeModal();
+        scheduleSave();
+        loadList();
+        renderBar();
+      };
+    });
+  };
+  paint("");
+  $("#movePickFilter").oninput = (e) => paint(e.target.value);
+  $("#movePickFilter").focus();
+}
+
+// graph view — every note as a dot on a circle, every [[link]] as a line. Not a physics
+// simulation like Obsidian's, but the same purpose: see the shape of your vault, tap to jump.
+async function openGraphModal() {
+  let data = { nodes: [], links: [] };
+  try { data = await api("GET", "/api/graph"); } catch (e) {}
+  const scrim = $("#modalScrim");
+  scrim.innerHTML =
+    '<div class="modal wide"><h2 style="color:var(--blue)">graph</h2>' +
+    '<canvas id="graphCanvas"></canvas>' +
+    '<div class="hint">' + data.nodes.length + " notes · " + data.links.length + " links — tap a dot to open that note</div></div>";
+  scrim.hidden = false;
+  scrim.onclick = (e) => { if (e.target === scrim) closeModal(); };
+  const cv = $("#graphCanvas");
+  const W = Math.min(400, window.innerWidth - 84), H = Math.min(360, W);
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = W * dpr; cv.height = H * dpr;
+  cv.style.width = W + "px"; // explicit, so click coordinates match the drawing exactly
+  cv.style.height = H + "px";
+  const ctx = cv.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const cx = W / 2, cy = H / 2, R = Math.min(W, H) / 2 - 40;
+  const css = getComputedStyle(document.documentElement);
+  const pos = {};
+  data.nodes.forEach((n, i) => {
+    const a = (i / Math.max(1, data.nodes.length)) * Math.PI * 2 - Math.PI / 2;
+    pos[n.id] = { x: cx + R * Math.cos(a), y: cy + R * Math.sin(a), n };
+  });
+  ctx.strokeStyle = css.getPropertyValue("--line").trim() || "#34343f";
+  data.links.forEach((l) => {
+    const a = pos[l.source], b = pos[l.target];
+    if (!a || !b) return;
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+  });
+  const linked = new Set();
+  data.links.forEach((l) => { linked.add(l.source); linked.add(l.target); });
+  ctx.font = "9.5px " + (css.getPropertyValue("--mono") || "monospace");
+  ctx.textAlign = "center";
+  Object.values(pos).forEach((p) => {
+    ctx.fillStyle = p.n.id === activeId ? (css.getPropertyValue("--yellow").trim() || "#e6c384")
+      : linked.has(p.n.id) ? (css.getPropertyValue("--blue").trim() || "#7e9cd8")
+      : (css.getPropertyValue("--dim").trim() || "#7a7a8c");
+    ctx.beginPath(); ctx.arc(p.x, p.y, 4.5, 0, Math.PI * 2); ctx.fill();
+    if (data.nodes.length <= 40) {
+      ctx.fillStyle = css.getPropertyValue("--dim").trim() || "#7a7a8c";
+      const label = p.n.title.length > 14 ? p.n.title.slice(0, 13) + "…" : p.n.title;
+      // labels sit outside the circle, pushed away from the center so they don't overlap the ring
+      const dx = p.x - cx, dy = p.y - cy, len = Math.hypot(dx, dy) || 1;
+      ctx.fillText(label, p.x + (dx / len) * 16, p.y + (dy / len) * 16 + 3);
+    }
+  });
+  cv.onclick = (e) => {
+    const rect = cv.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    let best = null, bestD = 14;
+    Object.values(pos).forEach((p) => {
+      const d = Math.hypot(p.x - mx, p.y - my);
+      if (d < bestD) { best = p; bestD = d; }
+    });
+    if (best) { closeModal(); openNote(best.n.id); }
+  };
+}
+
+// copies a direct link to this note — anyone logged into the same account (i.e. you on
+// another device) lands right on it via the #/n/<id> hash the boot code understands
+async function copyNoteLink() {
+  if (!active) return;
+  const url = location.origin + "/#/n/" + encodeURIComponent(active.id);
+  try { await navigator.clipboard.writeText(url); } catch (e) { prompt("copy this link:", url); }
+}
+
 /* ---- command palette ---- */
 // subsequence fuzzy match: every char of query must appear in target, in order.
 // score rewards matches that start at a word boundary and matches with fewer gaps.
@@ -1170,10 +1496,28 @@ function paletteItemGroups() {
     { kind: "new", label: "new note", run: () => newNote() },
     { kind: "action", label: active ? (mode === "draw" ? "switch to write mode" : "switch to draw mode") : "open a note to draw",
       run: () => { if (!active) return; setMode(mode === "draw" ? "insert" : "draw"); } },
+    { kind: "action", label: "today's daily note", run: () => openDailyNote() },
+    { kind: "action", label: active && active.pinned ? "unpin note" : "pin note to top",
+      run: () => { if (!active) return; active.pinned = !active.pinned; scheduleSave(); loadList(); } },
+    { kind: "action", label: "outline (headings)", run: () => openOutlineModal() },
+    { kind: "action", label: "graph view", run: () => openGraphModal() },
+    { kind: "action", label: "note info & stats", run: () => openNoteInfoModal() },
+    { kind: "action", label: "move note into…", run: () => openMoveNoteModal() },
+    { kind: "action", label: "trash (deleted notes)", run: () => openTrashModal() },
+    { kind: "action", label: "copy link to note", run: () => copyNoteLink() },
     { kind: "action", label: "undo", run: () => doUndo() },
     { kind: "action", label: "redo", run: () => doRedo() },
     { kind: "action", label: "duplicate current note", run: () => duplicateNote() },
+    { kind: "action", label: "check all to-dos", run: () => setAllTodos(true) },
+    { kind: "action", label: "uncheck all to-dos", run: () => setAllTodos(false) },
     { kind: "action", label: "download note as .md", run: () => downloadNoteMd() },
+    { kind: "action", label: "download all notes (.zip)", run: () => { location.href = "/api/export.zip"; } },
+    { kind: "action", label: smallText ? "normal text size" : "small text size",
+      run: () => { smallText = !smallText; setPref("smallText", smallText); applyEditorPrefs(); } },
+    { kind: "action", label: narrowPage ? "full-width page" : "centered narrow page",
+      run: () => { narrowPage = !narrowPage; setPref("narrowPage", narrowPage); applyEditorPrefs(); } },
+    { kind: "action", label: spellcheckOn ? "disable spellcheck" : "enable spellcheck",
+      run: () => { spellcheckOn = !spellcheckOn; setPref("spellcheck", spellcheckOn); if (active && mode !== "draw") renderEditorBlocks(); } },
     { kind: "action", label: "keyboard shortcuts", run: () => openShortcutHelp() },
     { kind: "action", label: currentTheme() === "dark" ? "switch to light theme" : "switch to dark theme",
       run: () => { applyTheme(currentTheme() === "dark" ? "light" : "dark"); renderBar(); } },
@@ -1191,6 +1535,36 @@ function paletteItemGroups() {
   // every template as a searchable "new X" entry — typing "money" finds "new money planner"
   const templateItems = TEMPLATES.map((t) => ({ kind: "tpl", label: "new " + t.name, run: () => newNote(null, t) }));
   return { noteItems, actionItems, templateItems };
+}
+
+function setAllTodos(checked) {
+  if (!active || !$("#blockEditor")) return;
+  let changed = false;
+  blocks.forEach((x) => { if (x.type === "todo" && x.checked !== checked) { x.checked = checked; changed = true; } });
+  if (changed) { syncBody(); renderEditorBlocks(); }
+}
+
+/* ---- full-text search behind the palette ----
+   Title matching stays instant and local; body matching asks the server (which has every
+   note on disk — the browser cache only holds notes you've opened). Debounced, and stale
+   responses are dropped if the query moved on before they landed. */
+let searchResults = [];    // [{id,title,snippet}] for searchResultsQuery
+let searchResultsQuery = "";
+let searchTimer = null;
+
+function kickFullTextSearch(query) {
+  clearTimeout(searchTimer);
+  if (!query || query.length < 2) { searchResults = []; searchResultsQuery = ""; return; }
+  searchTimer = setTimeout(async () => {
+    try {
+      const res = await api("GET", "/api/search?q=" + encodeURIComponent(query));
+      const input = $("#searchBarInput");
+      if (!input || input.value !== query) return; // typed past this query — result is stale
+      searchResults = res || [];
+      searchResultsQuery = query;
+      renderPaletteResults(query); // re-render with the content matches appended
+    } catch (e) {}
+  }, 250);
 }
 
 let paletteSel = 0;
@@ -1240,7 +1614,22 @@ function renderPaletteResults(query) {
       .sort((a, b) => b.score - a.score)
       .map((x) => x.it)
       .slice(0, 9);
-    html = paletteFiltered.map((it, i) => paletteRowHtml(it, i)).join("");
+    // full-text hits from the server (see kickFullTextSearch), minus notes already
+    // matched by title above — those rows would just be duplicates
+    if (searchResultsQuery === query && searchResults.length) {
+      const seen = new Set(paletteFiltered.filter((it) => it.kind === "note").map((it) => it.label.toLowerCase()));
+      const contentItems = searchResults
+        .filter((r) => !seen.has((r.title || "").toLowerCase()))
+        .slice(0, 6)
+        .map((r) => ({ kind: "match", label: r.title, snippet: r.snippet, run: () => { openNote(r.id); closeSidebar(); } }));
+      if (contentItems.length) {
+        html = paletteFiltered.map((it, i) => paletteRowHtml(it, i)).join("") +
+          '<div class="palette-section">found inside notes</div>' +
+          contentItems.map((it, i) => paletteRowHtml(it, paletteFiltered.length + i)).join("");
+        paletteFiltered = paletteFiltered.concat(contentItems);
+      }
+    }
+    if (!html) html = paletteFiltered.map((it, i) => paletteRowHtml(it, i)).join("");
   } else {
     // nothing typed yet — browse mode: recent notes (already in recency order) up top, actions below.
     // "recent notes" itself is collapsible (see paletteRecentCollapsed) — collapsed items still
@@ -1273,7 +1662,10 @@ function renderPaletteResults(query) {
 }
 
 function paletteRowHtml(it, i) {
-  return '<li data-i="' + i + '"><span class="kind">' + it.kind + "</span>" + esc(it.label) + "</li>";
+  const body = it.snippet
+    ? '<span class="liwrap">' + esc(it.label) + '<span class="snippet">' + esc(it.snippet) + "</span></span>"
+    : esc(it.label);
+  return '<li data-i="' + i + '"><span class="kind">' + it.kind + "</span>" + body + "</li>";
 }
 
 function paintPaletteSelection() {
@@ -1358,7 +1750,11 @@ function renderWikiPopup(ed) {
 
 function paintWikiSelection() {
   const el = $("#wikiPopup");
-  if (el) el.querySelectorAll("li").forEach((li, i) => li.classList.toggle("sel", i === wikiSel));
+  if (!el) return;
+  el.querySelectorAll("li").forEach((li, i) => {
+    li.classList.toggle("sel", i === wikiSel);
+    if (i === wikiSel) li.scrollIntoView({ block: "nearest" });
+  });
 }
 
 function closeWikiPopup() {
@@ -1462,7 +1858,7 @@ function parseBlocks(md) {
       continue;
     }
 
-    m = line.match(/^(#{1,3})\s+(.*)$/);
+    m = line.match(/^(#{1,6})\s+(.*)$/);
     if (m) { flushPara(); out.push({ id: uid(), type: "h", level: m[1].length, text: m[2] }); i++; continue; }
 
     if (/^-{3,}\s*$/.test(line)) { flushPara(); out.push({ id: uid(), type: "hr" }); i++; continue; }
@@ -1480,7 +1876,17 @@ function parseBlocks(md) {
       flushPara();
       const qlines = [];
       while (i < lines.length && /^>\s?/.test(lines[i])) { qlines.push(lines[i].replace(/^>\s?/, "")); i++; }
-      out.push({ id: uid(), type: "quote", text: qlines.join("\n") });
+      // Obsidian callout: first quoted line is "[!kind] optional title", rest is the body.
+      // Anything not shaped like that stays a plain quote.
+      const cm = qlines[0] && qlines[0].match(/^\[!(\w+)\]\s*(.*)$/);
+      if (cm) {
+        const kind = cm[1].toLowerCase();
+        out.push({ id: uid(), type: "callout",
+          kind: ["note", "tip", "warning", "danger"].includes(kind) ? kind : "note",
+          text: cm[2] || "", body: qlines.slice(1).join("\n") });
+      } else {
+        out.push({ id: uid(), type: "quote", text: qlines.join("\n") });
+      }
       continue;
     }
 
@@ -1506,6 +1912,12 @@ function serializeBlocks(list) {
       case "ul": return "  ".repeat(b.indent || 0) + "- " + b.text;
       case "ol": return "  ".repeat(b.indent || 0) + olN + ". " + b.text;
       case "quote": return b.text.split("\n").map((l) => "> " + l).join("\n");
+      case "callout": {
+        // serializes to Obsidian's exact callout syntax, so it renders natively there too
+        const head = "> [!" + (b.kind || "note") + "]" + (b.text ? " " + b.text : "");
+        const body = (b.body || "").split("\n").map((l) => "> " + l).join("\n");
+        return b.body ? head + "\n" + body : head;
+      }
       case "code": return "```" + (b.lang || "") + "\n" + b.text + "\n```";
       case "hr": return "---";
       case "toggle": return "<details>\n<summary>" + (b.text || "") + "</summary>\n\n" + (b.body || "") + "\n\n</details>";
@@ -1599,9 +2011,11 @@ function getSelectionRange(el) {
    version into a blurred block, or wraps a selection with markdown syntax. When a block
    is focused for editing it always shows plain b.text (see the focus handler above), so
    this never has to reconcile edits made inside formatted markup. */
-// group order matters — [[wiki]] before [md](links), **bold** before *italic*, and
-// `code` / ==highlight== before italic so their inner chars never get half-matched
-const INLINE_RE = /\[\[([^\]]+)\]\]|\*\*([^*]+)\*\*|~~([^~]+)~~|`([^`]+)`|==([^=]+)==|\[([^\]]+)\]\(([^)\s]+)\)|\*([^*]+)\*/g;
+// group order matters — [[wiki]] before [md](links), **bold** before *italic*, `code` and
+// ==highlight== before italic, bare URLs after [md](links) so a link's url part isn't
+// re-matched, #tags after URLs so a "#" inside a URL fragment isn't taken for a tag.
+// groups: 1 wiki · 2 bold · 3 strike · 4 code · 5 mark · 6+7 mdlink · 8 bare url · 9 tag · 10 italic
+const INLINE_RE = /\[\[([^\]]+)\]\]|\*\*([^*]+)\*\*|~~([^~]+)~~|`([^`]+)`|==([^=]+)==|\[([^\]]+)\]\(([^)\s]+)\)|(https?:\/\/[^\s<>"')\]]+)|#([A-Za-z][\w/-]*)|\*([^*]+)\*/g;
 
 function renderInlineInto(el, text) {
   el.innerHTML = "";
@@ -1664,8 +2078,32 @@ function renderInlineInto(el, text) {
         el.appendChild(document.createTextNode(m[0]));
       }
     } else if (m[8] !== undefined) {
+      // bare URL — clickable without needing [text](url) around it
+      const a = document.createElement("a");
+      a.className = "md-link";
+      a.textContent = m[8];
+      a.href = m[8];
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.addEventListener("mousedown", (e) => e.preventDefault());
+      el.appendChild(a);
+    } else if (m[9] !== undefined) {
+      // #tag chip — tapping it searches the tag across all notes (full-text search)
+      const tag = m[9];
+      const chip = document.createElement("span");
+      chip.className = "tag-chip";
+      chip.textContent = "#" + tag;
+      chip.addEventListener("mousedown", (e) => e.preventDefault());
+      chip.addEventListener("click", (e) => {
+        e.preventDefault(); e.stopPropagation();
+        openPalette();
+        const input = $("#searchBarInput");
+        if (input) { input.value = "#" + tag; renderPaletteResults(input.value); kickFullTextSearch(input.value); }
+      });
+      el.appendChild(chip);
+    } else if (m[10] !== undefined) {
       const em = document.createElement("em");
-      em.textContent = m[8];
+      em.textContent = m[10];
       el.appendChild(em);
     }
     lastIndex = INLINE_RE.lastIndex;
@@ -1707,17 +2145,114 @@ function renderBlockEl(b) {
     const wrap = document.createElement("div");
     wrap.className = "block-code-wrap";
     wrap.dataset.id = b.id;
+
+    // header row: language label (saved into the ```lang fence), copy, and delete —
+    // this is the delete button code blocks never had
+    const head = document.createElement("div");
+    head.className = "code-head";
+    const lang = document.createElement("input");
+    lang.className = "code-lang";
+    lang.value = b.lang || "";
+    lang.placeholder = "language";
+    lang.spellcheck = false;
+    lang.addEventListener("input", () => { b.lang = lang.value.replace(/\W/g, ""); syncBody(); });
+    lang.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === "Escape") { e.preventDefault(); lang.blur(); } e.stopPropagation(); });
+    head.appendChild(lang);
+    const spacer = document.createElement("div");
+    spacer.className = "spacer";
+    head.appendChild(spacer);
+    const copyBtn = document.createElement("button");
+    copyBtn.type = "button"; copyBtn.className = "code-btn"; copyBtn.textContent = "copy";
+    copyBtn.onclick = async () => {
+      try { await navigator.clipboard.writeText(b.text || ""); copyBtn.textContent = "copied"; }
+      catch (e) { copyBtn.textContent = "failed"; }
+      setTimeout(() => { copyBtn.textContent = "copy"; }, 1200);
+    };
+    head.appendChild(copyBtn);
+    const rmBtn = document.createElement("button");
+    rmBtn.type = "button"; rmBtn.className = "code-btn danger"; rmBtn.textContent = "×";
+    rmBtn.title = "remove code block";
+    rmBtn.onclick = () => removeBlock(b.id);
+    head.appendChild(rmBtn);
+    wrap.appendChild(head);
+
     const ta = document.createElement("textarea");
     ta.className = "block-code-ta";
     ta.value = b.text;
     ta.spellcheck = false;
     ta.addEventListener("input", () => { b.text = ta.value; syncBody(); });
-    ta.addEventListener("keydown", (e) => { e.stopPropagation(); }); // let the browser handle Enter/Tab natively inside code
+    ta.addEventListener("keydown", (e) => {
+      // Backspace in an already-empty code block removes it (same as Notion) and steps back
+      if (e.key === "Backspace" && !ta.value) {
+        e.preventDefault();
+        const i = blocks.findIndex((x) => x.id === b.id);
+        removeBlock(b.id);
+        if (i > 0 && blocks[i - 1]) focusBlock(blocks[i - 1].id);
+        return;
+      }
+      if (e.key === "Escape") { ta.blur(); return; } // Esc gets you out of the textarea
+      e.stopPropagation(); // let the browser handle Enter/Tab natively inside code
+    });
     ta.addEventListener("focus", () => {
       if (mode !== "insert") { mode = "insert"; setTimeout(() => { renderBar(); renderStatus(); }, 100); }
     });
     wrap.appendChild(ta);
     return wrap;
+  }
+
+  if (b.type === "callout") {
+    const CALLOUT_ICONS = { note: "✎", tip: "☀", warning: "⚠", danger: "⛔" };
+    const box = document.createElement("div");
+    box.className = "block callout callout-" + (b.kind || "note");
+    box.dataset.id = b.id;
+
+    const head = document.createElement("div");
+    head.className = "callout-head";
+    const icon = document.createElement("span");
+    icon.className = "callout-icon";
+    icon.textContent = CALLOUT_ICONS[b.kind] || CALLOUT_ICONS.note;
+    icon.title = "click to change type";
+    // tapping the icon cycles note → tip → warning → danger — quicker than a menu
+    icon.style.cursor = "pointer";
+    icon.addEventListener("mousedown", (e) => e.preventDefault());
+    icon.addEventListener("click", () => {
+      const kinds = ["note", "tip", "warning", "danger"];
+      b.kind = kinds[(kinds.indexOf(b.kind || "note") + 1) % kinds.length];
+      syncBody(); renderEditorBlocks();
+    });
+    head.appendChild(icon);
+
+    const title = document.createElement("span");
+    title.className = "callout-title";
+    title.contentEditable = "true";
+    title.textContent = b.text || "";
+    title.setAttribute("data-placeholder", b.kind || "note");
+    title.addEventListener("input", () => { b.text = title.textContent; syncBody(); });
+    title.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); bodyTa.focus(); }
+      else if (e.key === "Escape") { title.blur(); }
+      else e.stopPropagation();
+    });
+    head.appendChild(title);
+
+    const rm = document.createElement("button");
+    rm.type = "button"; rm.className = "callout-rm"; rm.textContent = "×"; rm.title = "remove callout";
+    rm.addEventListener("mousedown", (e) => e.stopPropagation());
+    rm.onclick = () => removeBlock(b.id);
+    head.appendChild(rm);
+    box.appendChild(head);
+
+    const bodyTa = document.createElement("textarea");
+    bodyTa.className = "callout-body";
+    bodyTa.value = b.body || "";
+    bodyTa.placeholder = "callout content…";
+    bodyTa.addEventListener("input", () => { b.body = bodyTa.value; syncBody(); });
+    bodyTa.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") { bodyTa.blur(); return; }
+      e.stopPropagation();
+    });
+    box.appendChild(bodyTa);
+    return box;
   }
 
   if (b.type === "toggle") {
@@ -1755,7 +2290,7 @@ function renderBlockEl(b) {
     bodyTa.value = b.body || "";
     bodyTa.placeholder = "toggle content…";
     bodyTa.addEventListener("input", () => { b.body = bodyTa.value; syncBody(); });
-    bodyTa.addEventListener("keydown", (e) => e.stopPropagation());
+    bodyTa.addEventListener("keydown", (e) => { if (e.key === "Escape") { bodyTa.blur(); return; } e.stopPropagation(); });
     details.appendChild(bodyTa);
 
     return details;
@@ -1848,12 +2383,23 @@ function renderBlockEl(b) {
   }
 
   textEl.contentEditable = "true";
+  textEl.spellcheck = spellcheckOn; // device preference — toggled from the palette
   renderInlineInto(textEl, b.text || ""); // rendered (clickable links, bold/italic) until focused
   textEl.setAttribute("data-placeholder", blockPlaceholder(b));
 
   textEl.addEventListener("input", () => {
     b.text = textEl.textContent;
-    if (applyTypeTrigger(b)) { syncBody(); renderEditorBlocks(); focusBlock(b.id, (b.text || "").length); return; }
+    if (applyTypeTrigger(b)) {
+      syncBody(); renderEditorBlocks();
+      if (b.type === "hr") {
+        // nothing to type into on a divider — drop into the paragraph created after it
+        const i = blocks.findIndex((x) => x.id === b.id);
+        if (blocks[i + 1]) focusBlock(blocks[i + 1].id, 0);
+      } else {
+        focusBlock(b.id, (b.text || "").length);
+      }
+      return;
+    }
     syncBody();
     checkSlashTrigger(textEl, b);
     if (!slashOpen) checkWikiTriggerCE(textEl, b); // one popup at a time — / wins over [[
@@ -1861,6 +2407,35 @@ function renderBlockEl(b) {
   textEl.addEventListener("paste", (e) => {
     e.preventDefault();
     const text = (e.clipboardData || window.clipboardData).getData("text/plain");
+    const sel = getSelectionRange(textEl);
+    // pasting a URL over selected text turns the selection into a markdown link (Notion behavior)
+    if (sel.start !== sel.end && /^https?:\/\/\S+$/.test(text.trim())) {
+      const t = b.text || "";
+      const url = text.trim();
+      b.text = t.slice(0, sel.start) + "[" + t.slice(sel.start, sel.end) + "](" + url + ")" + t.slice(sel.end);
+      syncBody(); renderEditorBlocks();
+      focusBlock(b.id, sel.end + url.length + 4); // caret lands after the inserted )
+      return;
+    }
+    // multi-line paste: don't cram newlines into one block — the first line joins this
+    // block and every following line becomes a real parsed block (headings, lists,
+    // tables… all recognized, because it goes through the same parseBlocks as loading)
+    if (text.includes("\n")) {
+      const t = b.text || "";
+      const lines = text.replace(/\r/g, "").split("\n");
+      b.text = t.slice(0, sel.start) + lines[0];
+      const tail = t.slice(sel.end); // text that was after the caret continues after the paste
+      const rest = parseBlocks(lines.slice(1).join("\n"));
+      const last = rest[rest.length - 1];
+      if (last && TEXT_TYPES.has(last.type)) last.text = (last.text || "") + tail;
+      else if (tail) rest.push({ id: uid(), type: "p", text: tail });
+      const i = blocks.findIndex((x) => x.id === b.id);
+      blocks.splice(i + 1, 0, ...rest);
+      applyTypeTrigger(b); // a pasted "# heading" first line converts the current block too
+      syncBody(); renderEditorBlocks();
+      focusBlock(last ? last.id : b.id);
+      return;
+    }
     document.execCommand("insertText", false, text);
   });
   textEl.addEventListener("focus", () => {
@@ -1907,13 +2482,47 @@ function makeTableCell(b, r, c, value, isHeader) {
   text.className = "cell-text";
   text.contentEditable = "true";
   text.textContent = value;
+  text.dataset.r = r; // -1 = header row — lets Tab/Enter find the neighboring cell in the DOM
+  text.dataset.c = c;
   text.addEventListener("input", () => {
     if (isHeader) b.header[c] = text.textContent; else b.rows[r][c] = text.textContent;
     syncBody();
   });
-  text.addEventListener("keydown", (e) => { if (e.key === "Enter") e.preventDefault(); e.stopPropagation(); });
+  text.addEventListener("keydown", (e) => {
+    // spreadsheet-style navigation: Tab → next cell, Shift+Tab → previous,
+    // Enter → same column one row down (adds a row when you're on the last one)
+    if (e.key === "Tab") {
+      e.preventDefault(); e.stopPropagation();
+      const cols = b.header.length;
+      let nr = r, nc = c + (e.shiftKey ? -1 : 1);
+      if (nc >= cols) { nc = 0; nr = r + 1; }
+      if (nc < 0) { nc = cols - 1; nr = r - 1; }
+      if (nr < -1) return;
+      if (nr >= b.rows.length) { addTableRow(b); } // addTableRow re-renders — cell lookup below still works
+      focusTableCell(b, nr, nc);
+      return;
+    }
+    if (e.key === "Enter") {
+      e.preventDefault(); e.stopPropagation();
+      const nr = r + 1;
+      if (nr >= b.rows.length) addTableRow(b);
+      focusTableCell(b, nr, c);
+      return;
+    }
+    if (e.key === "Escape") { text.blur(); return; }
+    e.stopPropagation();
+  });
   cell.appendChild(text);
   return cell;
+}
+
+function focusTableCell(b, r, c) {
+  const wrap = $("#blockEditor") && $("#blockEditor").querySelector('[data-id="' + b.id + '"]');
+  if (!wrap) return;
+  const cell = wrap.querySelector('.cell-text[data-r="' + r + '"][data-c="' + c + '"]');
+  if (!cell) return;
+  cell.focus();
+  setCaretOffset(cell, cell.textContent.length);
 }
 
 function addTableColumn(b) {
@@ -1956,12 +2565,26 @@ function applyTypeTrigger(b) {
   if (!["p", "ul", "ol", "todo", "quote"].includes(b.type)) return false;
   const t = b.text || "";
   let m;
-  if ((m = t.match(/^(#{1,3})\s(.*)$/))) { b.type = "h"; b.level = m[1].length; b.text = m[2]; return true; }
+  if ((m = t.match(/^(#{1,6})\s(.*)$/))) { b.type = "h"; b.level = m[1].length; b.text = m[2]; return true; }
   if ((m = t.match(/^-\s\[([ xX])\]\s(.*)$/))) { b.type = "todo"; b.checked = m[1].toLowerCase() === "x"; b.text = m[2]; return true; }
   if (b.type !== "ul" && (m = t.match(/^-\s(.*)$/))) { b.type = "ul"; b.text = m[1]; return true; }
   if (b.type !== "ol" && (m = t.match(/^\d+\.\s(.*)$/))) { b.type = "ol"; b.text = m[1]; return true; }
+  // "> [!note] " typed out converts to a callout, same as Obsidian
+  if ((m = t.match(/^>\s\[!(\w+)\]\s(.*)$/))) {
+    const kind = m[1].toLowerCase();
+    b.type = "callout"; b.kind = ["note", "tip", "warning", "danger"].includes(kind) ? kind : "note";
+    b.text = m[2]; b.body = ""; return true;
+  }
   if (b.type !== "quote" && (m = t.match(/^>\s(.*)$/))) { b.type = "quote"; b.text = m[1]; return true; }
   if (b.type === "p" && t === "```") { b.type = "code"; b.text = ""; b.lang = ""; return true; }
+  // typing --- on its own line becomes a divider (a fresh paragraph is added after it,
+  // since an hr has nothing to keep typing into)
+  if (b.type === "p" && /^-{3,}$/.test(t) && t.length >= 3) {
+    const i = blocks.findIndex((x) => x.id === b.id);
+    b.type = "hr"; delete b.text;
+    blocks.splice(i + 1, 0, { id: uid(), type: "p", text: "" });
+    return true;
+  }
   return false;
 }
 
@@ -2165,6 +2788,14 @@ function handleBlockKeydown(e, b, el) {
       return;
     }
 
+    if (pos === 0 && (b.text || "").length) {
+      // Enter at the very start of a non-empty block pushes the block down and leaves
+      // an empty line above it — the caret stays where it was (Notion behavior)
+      blocks.splice(i, 0, { id: uid(), type: "p", text: "" });
+      syncBody(); renderEditorBlocks(); focusBlock(b.id, 0);
+      return;
+    }
+
     b.text = before;
     const newType = b.type === "ul" || b.type === "ol" || b.type === "todo" ? b.type : "p";
     const next = { id: uid(), type: newType, text: after, indent: b.indent, checked: false };
@@ -2182,7 +2813,7 @@ function handleBlockKeydown(e, b, el) {
     if (i === 0) return; // nothing before the first block to merge into
     e.preventDefault();
     const prev = blocks[i - 1];
-    if (prev.type === "hr" || prev.type === "code" || prev.type === "table") {
+    if (["hr", "code", "table", "toggle", "callout"].includes(prev.type)) {
       // don't silently merge text into a structural block — just drop into it instead
       focusBlock(prev.id);
       return;
@@ -2233,6 +2864,8 @@ function renderWikiPopupCE() {
   popup.querySelectorAll("li").forEach((li) => {
     li.onmousedown = (e) => { e.preventDefault(); insertWikiLinkCE(parseInt(li.getAttribute("data-i"), 10)); };
   });
+  const selEl = popup.querySelector("li.sel");
+  if (selEl) selEl.scrollIntoView({ block: "nearest" });
 }
 
 function insertWikiLinkCE(i) {
@@ -2268,6 +2901,10 @@ const SLASH_ITEMS = [
   { label: "numbered list", apply: (b) => { b.type = "ol"; } },
   { label: "to-do list", apply: (b) => { b.type = "todo"; b.checked = false; } },
   { label: "quote", apply: (b) => { b.type = "quote"; } },
+  { label: "callout — note", apply: (b) => { b.type = "callout"; b.kind = "note"; b.body = ""; } },
+  { label: "callout — tip", apply: (b) => { b.type = "callout"; b.kind = "tip"; b.body = ""; } },
+  { label: "callout — warning", apply: (b) => { b.type = "callout"; b.kind = "warning"; b.body = ""; } },
+  { label: "callout — danger", apply: (b) => { b.type = "callout"; b.kind = "danger"; b.body = ""; } },
   { label: "code block", apply: (b) => { b.type = "code"; b.lang = ""; } },
   { label: "divider", replace: () => ({ id: uid(), type: "hr" }) },
   { label: "table", replace: () => ({ id: uid(), type: "table", header: ["a", "b"], rows: [["", ""]] }) },
@@ -2304,6 +2941,9 @@ function renderSlashPopup() {
   popup.querySelectorAll("li").forEach((li) => {
     li.onmousedown = (e) => { e.preventDefault(); runSlashItem(parseInt(li.getAttribute("data-i"), 10)); };
   });
+  // keep the highlighted item visible — the popup scrolls, arrow keys must follow it
+  const selEl = popup.querySelector("li.sel");
+  if (selEl) selEl.scrollIntoView({ block: "nearest" });
 }
 
 function closeSlash() {
@@ -2343,7 +2983,7 @@ function renderMain() {
     main.innerHTML = '<div class="empty"><p>no note open.</p><button class="ghost" id="emptyNew">+ new note</button>' +
       TEMPLATES.slice(0, 4).map((t, i) => '<button class="ghost sm" data-tpl="' + i + '">+ ' + esc(t.name) + '</button>').join("") +
       '</div>';
-    $("#emptyNew").onclick = () => newNote();
+    $("#emptyNew").onclick = () => openNewNoteMenu();
     main.querySelectorAll("[data-tpl]").forEach((btn) => {
       btn.onclick = () => newNote(null, TEMPLATES[+btn.getAttribute("data-tpl")]);
     });
@@ -2380,6 +3020,7 @@ function renderMain() {
       '<div class="backlinks" id="backlinksPanel" hidden></div>';
     blocks = parseBlocks(active.body);
     renderEditorBlocks();
+    applyEditorPrefs();
     buildKbar();
     buildDrawControls();
     // pointer handlers live on the scroller permanently, in every mode — down() decides what a
@@ -2894,8 +3535,11 @@ window.addEventListener("keydown", (e) => {
   // hadn't already flipped to "insert" (e.g. clicking straight into a block instead of pressing i first)
   const typing = el && (el.tagName === "TEXTAREA" || el.tagName === "INPUT" || el.isContentEditable);
 
-  // command palette — works everywhere, even mid-typing, like Cmd/Ctrl-K in most editors
-  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); openPalette(); return; }
+  // command palette — works everywhere, even mid-typing, like Cmd/Ctrl-K in most editors.
+  // P and O do the same thing for Notion (quick find) and Obsidian (quick open) muscle memory.
+  if ((e.metaKey || e.ctrlKey) && !e.shiftKey && ["k", "p", "o"].includes(e.key.toLowerCase())) {
+    e.preventDefault(); openPalette(); return;
+  }
 
   // Ctrl/Cmd-S flushes the pending autosave immediately (muscle memory deserves to work)
   if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "s") {
@@ -2957,7 +3601,9 @@ function openShortcutHelp() {
     ["↑ / ↓ at block edge", "jump between blocks"],
     ["/", "block menu (start of a line)"],
     ["[[", "link to another note"],
-    ["# ## ### - 1. > ```", "type + space to convert block"],
+    ["Tab / Enter in a table", "next cell / next row"],
+    ["# … ###### - 1. > --- ```", "type + space to convert block"],
+    ["> [!note] / [!tip] / [!warning]", "callout"],
     ["i / d / o", "insert · draw · new note (when not typing)"],
     ["Esc", "back to normal mode"],
     ["?", "this help"],
@@ -3089,9 +3735,13 @@ setInterval(pollActiveNote, 2000);
   await loadList(); // fetch from server (updates cache on success, sets offline flag on failure)
   // reopen the note you were last in (persisted per account in openNote), or first in list —
   // fall back to local cache if server is down
+  // a #/n/<id> hash in the URL (from "copy link to note") wins over the remembered note
+  const hashMatch = location.hash.match(/^#\/n\/(.+)$/);
+  const hashId = hashMatch ? decodeURIComponent(hashMatch[1]) : null;
   const lastId = LC.get("glyph:" + ME + ":last");
   const firstId = activeId ||
-    (lastId && notes.some((n) => n.id === lastId) ? lastId : (notes[0] && notes[0].id));
+    (hashId && notes.some((n) => n.id === hashId) ? hashId :
+     lastId && notes.some((n) => n.id === lastId) ? lastId : (notes[0] && notes[0].id));
   if (firstId) {
     try { await openNote(firstId); }
     catch(e) { renderMain(); } // cached note not available either
