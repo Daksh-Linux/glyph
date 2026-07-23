@@ -1,7 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" translate="no">
 <head>
 <meta charset="utf-8" />
+<!-- Chrome on Android was auto-translating the app (and note text) into another language.
+     Translation rewrites the page's text nodes, and since notes live in editable elements the
+     app reads back and saves, a translated block could be written over the real note. These two
+     opt-outs (the standard translate="no" attribute on the root element plus Google's own
+     meta tag, with .notranslate on body and every editable block) turn it off. -->
+<meta name="google" content="notranslate" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -568,7 +574,7 @@ body.zen .bar, body.zen .status, body.zen .kbar, body.zen .side, body.zen .backl
 }
 </style>
 </head>
-<body>
+<body class="notranslate">
 <div class="app">
   <header class="bar" id="bar"></header>
   <div class="body">
@@ -2996,6 +3002,10 @@ function renderBlockEl(b) {
 
   textEl.contentEditable = "true";
   textEl.spellcheck = spellcheckOn; // device preference — toggled from the palette
+  // belt and braces on top of the page-level opt-out: this is the element whose text gets
+  // read back and SAVED, so it must never be rewritten by a translator
+  textEl.translate = false;
+  textEl.classList.add("notranslate");
   renderInlineInto(textEl, b.text || ""); // rendered (clickable links, bold/italic) until focused
   textEl.setAttribute("data-placeholder", blockPlaceholder(b));
 
