@@ -24,6 +24,8 @@ Every "note-taking app" I tried wanted to sync my thoughts to someone else's ser
 - **Inline formatting** — `**bold**`, `*italic*`, `~~strike~~`, `` `code` ``, `==highlight==`, `[links](https://...)`, bare URLs, and `#tags` (tap a tag to search it)
 - **Smart tables** — Tab/Enter move between cells like a spreadsheet, Enter on the last row adds one, sticky header row
 - **Images** — paste a screenshot, drag a photo in, or pick one (camera/gallery on phones); stored as real files in your vault and referenced with plain markdown, so they show up in Obsidian and in exports too. S / M / full width per image
+- **PDFs** — drop a PDF into a note and it renders inline, images and formatting intact, using the browser's own viewer (no library, no upload to anyone else). S / M / L height, plus full-screen open
+- **One "open file" button** — a picture or PDF goes into the note you're in; a text or code file opens in the editor
 - **Smart paste** — pasting multi-line markdown creates real blocks; pasting a URL over selected text makes a link
 - **Code blocks** — language label, one-tap copy, delete button
 - **Keyboard bar** — a formatting toolbar with every block type, undo/redo, move/duplicate/delete block, indent/outdent; on iPad and Android it floats right above the on-screen keyboard

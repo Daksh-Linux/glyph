@@ -684,15 +684,15 @@ def purge_note(vault, note_id):
 # pictures too. The type is decided by sniffing the actual bytes, never by the filename:
 # that stops anything that isn't really an image (html, svg, a script) from being stored
 # and later served back from our own origin.
-ATTACH_MAX_SIZE = 10 * 1024 * 1024
+ATTACH_MAX_SIZE = 20 * 1024 * 1024  # pdfs run bigger than photos
 ATTACH_DIRNAME = "attachments"
 IMAGE_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".gif": "image/gif",
-               ".webp": "image/webp"}
+               ".webp": "image/webp", ".pdf": "application/pdf"}
 
 
-def sniff_image_ext(blob):
+def sniff_attachment_ext(blob):
     """Magic-byte detection (imghdr was removed from the stdlib in 3.13). Returns an
-    extension we're willing to store, or None."""
+    extension we're willing to store, or None. The bytes decide, never the filename."""
     if blob[:8] == b"\x89PNG\r\n\x1a\n":
         return ".png"
     if blob[:3] == b"\xff\xd8\xff":
@@ -701,7 +701,13 @@ def sniff_image_ext(blob):
         return ".gif"
     if blob[:4] == b"RIFF" and blob[8:12] == b"WEBP":
         return ".webp"
+    if blob[:5] == b"%PDF-":
+        return ".pdf"
     return None
+
+
+# kept as an alias so the Keep importer keeps reading naturally
+sniff_image_ext = sniff_attachment_ext
 
 
 def attach_dir(vault):
@@ -720,9 +726,9 @@ def _atomic_write_bytes(path, blob):
 
 
 def save_attachment(vault, blob):
-    ext = sniff_image_ext(blob)
+    ext = sniff_attachment_ext(blob)
     if not ext:
-        raise ValueError("that file isn't a png, jpg, gif or webp image")
+        raise ValueError("only images (png, jpg, gif, webp) and pdfs can be added")
     name = secrets.token_hex(8) + ext  # random name: no collisions, nothing user-controlled
     _atomic_write_bytes(os.path.join(attach_dir(vault), name), blob)
     return ATTACH_DIRNAME + "/" + name
@@ -1043,9 +1049,12 @@ wherever you want it (double-tap the grip to reset).
 - [ ] this is a to-do — the status bar is counting it right now
 - [ ] tables move like a spreadsheet: Tab next cell, Enter next row
 
-**images**: paste a screenshot, drag a photo in, or tap the ▣ button in
-the bar above the keyboard — on a phone that offers your camera and photo
-library. hover or tap an image for S / M / full width, or × to remove it.
+**images and pdfs**: paste a screenshot, drag a file in, tap the ▣ button
+in the bar above the keyboard, or use sidebar → open file. on a phone the
+picker offers your camera, photo library and files. a pdf displays right
+in the note — pictures, fonts and layout and all — with S/M/L height and
+an "open" button for full screen. images get S / M / full width. × removes
+either from the note.
 
 select text and a floating toolbar appears: **bold**, *italic*,
 ~~strike~~, `code`, ==highlight==, or turn the selection into a [[link]].
@@ -1295,13 +1304,21 @@ class Handler(BaseHTTPRequestHandler):
             full = attachment_path(user_vault(user), unquote(match.group(1)))
             if not full:
                 return self._json({"error": "not found"}, 404)
+            ext = os.path.splitext(full)[1].lower()
             with open(full, "rb") as f:
                 data = f.read()
             self.send_response(200)
-            self.send_header("Content-Type", IMAGE_TYPES[os.path.splitext(full)[1].lower()])
+            self.send_header("Content-Type", IMAGE_TYPES[ext])
             self.send_header("Content-Length", str(len(data)))
             # nosniff so a browser can never reinterpret a stored file as something executable
             self.send_header("X-Content-Type-Options", "nosniff")
+            if ext == ".pdf":
+                # inline so the browser's own viewer renders it (images, fonts, layout and
+                # all) instead of downloading; the filename is random, hence the generic one
+                self.send_header("Content-Disposition", 'inline; filename="document.pdf"')
+            else:
+                # images can never legitimately pull anything, so lock them right down
+                self.send_header("Content-Security-Policy", "default-src 'none'; sandbox")
             self.send_header("Cache-Control", "private, max-age=31536000, immutable")  # names are random
             self.end_headers()
             self.wfile.write(data)

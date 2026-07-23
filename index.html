@@ -382,6 +382,15 @@ body.zen .bar, body.zen .status, body.zen .kbar, body.zen .side, body.zen .backl
 /* on touch there is no hover — keep the controls visible so they're reachable */
 @media (hover:none){.img-bar{opacity:.9}}
 
+/* pdf embeds — rendered by the browser's own viewer */
+.block-pdf-wrap{margin:8px 0; border:1px solid var(--line2); border-radius:8px; overflow:hidden}
+.pdf-bar{display:flex; align-items:center; gap:3px; padding:5px 6px; background:var(--ink);
+  border-bottom:1px solid var(--line2)}
+.pdf-name{font-size:12px; color:var(--dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:40%}
+.block-pdf{display:block; width:100%; border:none; background:var(--panel)}
+.pdf-hint{font-size:11px; color:var(--faint); padding:5px 8px; background:var(--ink);
+  border-top:1px solid var(--line2)}
+
 /* two-step import wizard */
 .step{border:1px solid var(--line2); border-radius:9px; padding:12px; margin-top:12px}
 .step-head{display:flex; align-items:center; gap:9px; font-size:13px; color:var(--text); font-weight:600; margin-bottom:10px}
@@ -602,7 +611,7 @@ body.zen .bar, body.zen .status, body.zen .kbar, body.zen .side, body.zen .backl
   <!-- fallback for openLocalFile() on Safari/Firefox, which don't implement the File System
        Access API (showOpenFilePicker) — a plain file input works in every browser -->
   <input type="file" id="lfInput" hidden
-    accept=".py,.sh,.js,.ts,.json,.md,.txt,.yml,.yaml,.toml,.c,.cpp,.h,.go,.rs,.html,.css,.rb,.java,text/plain">
+    accept=".py,.sh,.js,.ts,.json,.md,.txt,.yml,.yaml,.toml,.c,.cpp,.h,.go,.rs,.html,.css,.rb,.java,text/plain,image/*,.pdf,application/pdf">
 </div>
 
 <script>
@@ -1156,6 +1165,19 @@ function applyEditorPrefs() {
      updated copy under the same filename. localFile.handle is null on this path — that's the flag
      renderLocalFileView() and saveLocalFile() branch on. */
 
+// "open file" is one button for every kind of file: a picture or a pdf gets attached to the
+// note you're in (creating one if you have none open), anything else opens in the text
+// editor as before. Returns true when it handled the file as an attachment.
+async function attachIfMedia(file) {
+  if (!isAttachable(file)) return false;
+  if (!blockEditorEnabled()) { alert("turn the block editor on to add images and pdfs"); return true; }
+  if (!active) await newNote();          // nothing open — give the file somewhere to live
+  else if (mode === "draw") setMode("insert");
+  closeSidebar();
+  await insertAttachmentFile(file, currentBlock() || blocks[blocks.length - 1]);
+  return true;
+}
+
 function discardLocalFileIfNeeded() {
   if (!localFile || !localFile.dirty) { localFile = null; return true; }
   if (confirm("Discard unsaved changes to " + localFile.name + "?")) { localFile = null; return true; }
@@ -1168,14 +1190,19 @@ async function openLocalFile() {
   let handle;
   try {
     [handle] = await window.showOpenFilePicker({
-      types: [{
-        description: "Text and code files",
-        accept: { "text/plain": [".py", ".sh", ".js", ".ts", ".json", ".md", ".txt", ".yml", ".yaml", ".toml", ".c", ".cpp", ".h", ".go", ".rs", ".html", ".css", ".rb", ".java"] },
-      }],
+      types: [
+        { description: "Text and code files",
+          accept: { "text/plain": [".py", ".sh", ".js", ".ts", ".json", ".md", ".txt", ".yml", ".yaml", ".toml", ".c", ".cpp", ".h", ".go", ".rs", ".html", ".css", ".rb", ".java"] } },
+        // pictures and pdfs are openable here too — they go into the note rather than the
+        // text editor, which is what people expect from a single "open file" button
+        { description: "Images and PDFs",
+          accept: { "image/*": [".png", ".jpg", ".jpeg", ".gif", ".webp"], "application/pdf": [".pdf"] } },
+      ],
       excludeAcceptAllOption: false,
     });
   } catch (e) { return; } // user cancelled the picker — not an error
   const file = await handle.getFile();
+  if (await attachIfMedia(file)) return; // image/pdf → straight into the open note
   const content = await file.text();
   localFile = { handle, name: file.name, content, dirty: false };
   active = null; activeId = null; // local-file view replaces the note view, not layered on top of it
@@ -1189,6 +1216,7 @@ $("#lfInput").addEventListener("change", async () => {
   const file = $("#lfInput").files[0];
   $("#lfInput").value = ""; // reset so picking the same file again still fires change next time
   if (!file) return;
+  if (await attachIfMedia(file)) return; // picture or pdf → into the note, not the text editor
   const content = await file.text();
   localFile = { handle: null, name: file.name, content, dirty: false };
   active = null; activeId = null;
@@ -2430,7 +2458,11 @@ function parseBlocks(md) {
     if (m) {
       flushPara();
       const alt = m[1], w = alt.match(/^(.*)\|(\d+)$/);
-      out.push({ id: uid(), type: "img", src: m[2], alt: w ? w[1] : alt, width: w ? +w[2] : null });
+      // one syntax for every attachment — the extension decides whether it's a picture or
+      // a pdf embed (this is what Obsidian does with ![](file.pdf) too)
+      const src = m[2];
+      out.push({ id: uid(), type: /\.pdf$/i.test(src) ? "pdf" : "img", src,
+        alt: w ? w[1] : alt, width: w ? +w[2] : null });
       i++;
       continue;
     }
@@ -2498,7 +2530,8 @@ function serializeBlocks(list) {
       }
       case "code": return "```" + (b.lang || "") + "\n" + b.text + "\n```";
       case "hr": return "---";
-      case "img": return "![" + (b.alt || "") + (b.width ? "|" + b.width : "") + "](" + b.src + ")";
+      case "img":
+      case "pdf": return "![" + (b.alt || "") + (b.width ? "|" + b.width : "") + "](" + b.src + ")";
       case "toggle": return "<details>\n<summary>" + (b.text || "") + "</summary>\n\n" + (b.body || "") + "\n\n</details>";
       case "table": {
         const header = "| " + b.header.join(" | ") + " |";
@@ -2766,11 +2799,13 @@ async function uploadImage(file) {
   return data.path;
 }
 
-// puts an image block after `afterBlock` (or at the end), showing a placeholder row while
-// the upload is in flight so a big photo on a slow phone connection doesn't look frozen
-async function insertImageFile(file, afterBlock) {
+const isAttachable = (f) => !!f && (f.type.startsWith("image/") || /\.pdf$/i.test(f.name || "") || f.type === "application/pdf");
+
+// puts an image/pdf block after `afterBlock` (or at the end), showing a placeholder row
+// while the upload is in flight so a big file on a slow phone connection doesn't look frozen
+async function insertAttachmentFile(file, afterBlock) {
   if (!active || !file) return;
-  const placeholder = { id: uid(), type: "p", text: "uploading " + (file.name || "image") + "…" };
+  const placeholder = { id: uid(), type: "p", text: "uploading " + (file.name || "file") + "…" };
   const i = afterBlock ? blocks.findIndex((x) => x.id === afterBlock.id) : blocks.length - 1;
   const emptyHere = afterBlock && TEXT_TYPES.has(afterBlock.type) && !(afterBlock.text || "").trim();
   if (emptyHere) blocks.splice(i, 1, placeholder); else blocks.splice(i + 1, 0, placeholder);
@@ -2779,22 +2814,24 @@ async function insertImageFile(file, afterBlock) {
     const path = await uploadImage(file);
     const at = blocks.findIndex((x) => x.id === placeholder.id);
     if (at === -1) return; // the note changed under us mid-upload
-    blocks.splice(at, 1, { id: uid(), type: "img", src: path, alt: "", width: null });
+    const isPdf = /\.pdf$/i.test(path);
+    blocks.splice(at, 1, { id: uid(), type: isPdf ? "pdf" : "img", src: path,
+      alt: isPdf ? (file.name || "pdf") : "", width: null });
     syncBody(); renderEditorBlocks(); scheduleInkResize();
   } catch (e) {
     const at = blocks.findIndex((x) => x.id === placeholder.id);
     if (at !== -1) blocks.splice(at, 1);
     renderEditorBlocks();
-    alert("couldn't add that image: " + e.message);
+    alert("couldn't add that file: " + e.message);
   }
 }
 
-// the file picker used by the toolbar / slash menu. accept="image/*" makes phones offer
-// the camera and photo library directly.
+// the file picker used by the toolbar / slash menu. accept lets phones offer the camera,
+// the photo library and the files app (for pdfs) in one sheet.
 function pickImage(afterBlock) {
   const input = document.createElement("input");
   input.type = "file";
-  input.accept = "image/*";
+  input.accept = "image/*,application/pdf,.pdf";
   input.multiple = true;
   input.style.display = "none";
   document.body.appendChild(input);
@@ -2803,7 +2840,7 @@ function pickImage(afterBlock) {
     input.remove();
     let anchor = afterBlock;
     for (const f of files) {
-      await insertImageFile(f, anchor);
+      await insertAttachmentFile(f, anchor);
       anchor = blocks[blocks.length - 1]; // keep multiple picks in order
     }
   };
@@ -2911,6 +2948,59 @@ function renderBlockEl(b) {
       if (mode !== "insert") { mode = "insert"; setTimeout(() => { renderBar(); renderStatus(); }, 100); }
     });
     wrap.appendChild(ta);
+    return wrap;
+  }
+
+  if (b.type === "pdf") {
+    // rendered by the browser's own PDF viewer, so images, fonts and layout all come
+    // through exactly as designed — no PDF library needed
+    const wrap = document.createElement("div");
+    wrap.className = "block-pdf-wrap";
+    wrap.dataset.id = b.id;
+    const url = imageUrl(b.src);
+
+    const bar = document.createElement("div");
+    bar.className = "pdf-bar";
+    const name = document.createElement("span");
+    name.className = "pdf-name";
+    name.textContent = b.alt || "pdf";
+    bar.appendChild(name);
+    const spacer = document.createElement("div");
+    spacer.className = "spacer";
+    bar.appendChild(spacer);
+    [["S", 380], ["M", 620], ["L", 900]].forEach(([label, h]) => {
+      const btn = document.createElement("button");
+      btn.type = "button"; btn.className = "img-btn"; btn.textContent = label;
+      btn.title = "height: " + label;
+      btn.onclick = () => { b.width = h; syncBody(); renderEditorBlocks(); };
+      bar.appendChild(btn);
+    });
+    // always offered: some mobile browsers (Chrome on Android especially) won't render a
+    // pdf inside a frame at all, and this opens the device's real viewer full screen
+    const open = document.createElement("button");
+    open.type = "button"; open.className = "img-btn"; open.textContent = "open";
+    open.title = "open full screen / download";
+    open.onclick = () => window.open(url, "_blank", "noopener");
+    bar.appendChild(open);
+    const rm = document.createElement("button");
+    rm.type = "button"; rm.className = "img-btn danger"; rm.textContent = "×";
+    rm.title = "remove (the file stays in your vault)";
+    rm.onclick = () => removeBlock(b.id);
+    bar.appendChild(rm);
+    wrap.appendChild(bar);
+
+    const frame = document.createElement("iframe");
+    frame.className = "block-pdf";
+    frame.src = url + "#view=FitH";
+    frame.title = b.alt || "pdf";
+    frame.loading = "lazy";
+    frame.style.height = (b.width || 620) + "px";
+    wrap.appendChild(frame);
+
+    const hint = document.createElement("div");
+    hint.className = "pdf-hint";
+    hint.textContent = "not showing? tap open.";
+    wrap.appendChild(hint);
     return wrap;
   }
 
@@ -3201,7 +3291,7 @@ function renderBlockEl(b) {
     // a pasted screenshot/photo arrives as a file on the clipboard, with no text at all —
     // this used to fall through to insertText("") and silently do nothing
     const imgFile = cd && [...(cd.files || [])].find((f) => f.type.startsWith("image/"));
-    if (imgFile) { e.preventDefault(); insertImageFile(imgFile, b); return; }
+    if (imgFile) { e.preventDefault(); insertAttachmentFile(imgFile, b); return; }
     e.preventDefault();
     const text = cd.getData("text/plain");
     const sel = getSelectionRange(textEl);
@@ -3844,12 +3934,12 @@ function renderMain() {
       if (e.dataTransfer && [...e.dataTransfer.types].includes("Files")) e.preventDefault();
     });
     surface.addEventListener("drop", (e) => {
-      const files = e.dataTransfer && [...(e.dataTransfer.files || [])].filter((f) => f.type.startsWith("image/"));
+      const files = e.dataTransfer && [...(e.dataTransfer.files || [])].filter(isAttachable);
       if (!files || !files.length) return;
       e.preventDefault();
       (async () => {
         let anchor = currentBlock() || blocks[blocks.length - 1];
-        for (const f of files) { await insertImageFile(f, anchor); anchor = blocks[blocks.length - 1]; }
+        for (const f of files) { await insertAttachmentFile(f, anchor); anchor = blocks[blocks.length - 1]; }
       })();
     });
 
@@ -5043,6 +5133,8 @@ const HELP_SECTIONS = [
     ["callouts", "colored note/tip/warning/danger boxes — tap the icon to change type, ▾ to fold"],
     ["toggles", "collapsible sections — click the arrow, × to remove"],
     ["images", "paste a screenshot, drag a photo in, or use the ▣ button / \"/image\" — on a phone that offers your camera and gallery. Hover an image for S / M / full width and ×"],
+    ["pdfs", "add one the same way (or sidebar → open file) and it displays right in the note — images, fonts and layout intact. S/M/L height, and \"open\" for full screen"],
+    ["open file", "sidebar → open file takes anything: a picture or pdf goes into the note you're in, a text/code file opens in the editor as before"],
     ["code blocks", "language label, copy button, × to delete — Backspace when empty also removes it"],
     ["move blocks", "drag the ⋮⋮ handle (desktop), Alt+↑/↓, or the ↑↓ toolbar buttons"],
     ["empty space below", "tapping it starts a new paragraph there"],
