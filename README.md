@@ -66,6 +66,7 @@ Every "note-taking app" I tried wanted to sync my thoughts to someone else's ser
 - **Layout preferences** — small text, centered narrow page, spellcheck on/off — each remembered per device (pen color and sizes too)
 - **Zen mode** — hide every bar and panel, just you and the note (Esc leaves)
 - **Print / save as PDF** — a clean black-on-white print layout, straight from the palette
+- **Built for phones** — touch-first sidebar with a per-note ⋯ action menu, bottom-sheet dialogs, a formatting bar and draggable slash/link menus that float above the on-screen keyboard, and 40px+ touch targets throughout
 - **PWA** — installable on iOS/Android/desktop, works offline
 - **Self-service account deletion** — delete your account and every note in it yourself, no need to ask
 - **Plain-language [privacy & terms](https://glyph.dakshhq.com/legal)** — written by the person who runs it, not a lawyer

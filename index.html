@@ -89,36 +89,50 @@ svg{display:block}
 /* body */
 .body{flex:1; display:flex; min-height:0; position:relative}
 
-/* sidebar */
-.side{width:236px; flex:0 0 auto; background:var(--ink);
+/* sidebar — redesigned around touch: tall rows, a proper primary button, an always-visible
+   per-note ⋯ menu (hover-only buttons are invisible on a phone), and a real footer */
+.side{width:272px; flex:0 0 auto; background:var(--ink);
   border-right:1px solid var(--line); display:flex; flex-direction:column; min-height:0}
 .side-head{display:flex; align-items:center; justify-content:space-between;
-  padding:10px 12px 8px; color:var(--dim); font-size:12px; letter-spacing:.5px;
+  padding:12px 14px 10px; color:var(--dim); font-size:12.5px; letter-spacing:.5px;
   border-bottom:1px solid var(--line2)}
-.list{list-style:none; margin:0; padding:8px; overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:2px}
-.row{display:flex; align-items:center; gap:7px; padding:7px 8px; border-radius:9px; color:var(--text);
-  cursor:pointer; border:1px solid transparent}
+.side-search{display:flex; align-items:center; gap:9px; margin:10px 10px 2px; padding:10px 12px;
+  background:var(--panel); border:1px solid var(--line); border-radius:9px; color:var(--dim);
+  font-size:13px; cursor:pointer; text-align:left; width:calc(100% - 20px)}
+.side-search:hover{border-color:var(--blue); color:var(--text)}
+.side-primary{display:flex; gap:8px; padding:10px 10px 6px}
+.btn-primary{flex:1; display:flex; align-items:center; justify-content:center; gap:8px;
+  background:var(--sel-bg); border:1px solid var(--blue); color:var(--text);
+  border-radius:9px; padding:11px; font-size:13.5px; font-weight:600}
+.btn-primary:hover{background:var(--panel)}
+.btn-quick{flex:0 0 auto; width:44px; display:flex; align-items:center; justify-content:center;
+  background:var(--panel); border:1px solid var(--line); border-radius:9px; color:var(--dim); font-size:15px}
+.btn-quick:hover{color:var(--text); border-color:var(--blue)}
+.side-scroll{overflow-y:auto; flex:1; min-height:0; padding:2px 8px 8px}
+.section-label{padding:12px 8px 4px; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--faint)}
+.list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:2px}
+.row{display:flex; align-items:center; gap:6px; padding:9px 6px 9px 8px; border-radius:9px; color:var(--text);
+  cursor:pointer; border:1px solid transparent; font-size:13.5px}
 .row:hover{background:var(--panel); border-color:var(--line2)}
 .row.sel{background:var(--sel-bg); border-color:var(--blue)}
-.tree-tog{color:var(--dim); font-size:11px; padding:0; line-height:1; flex:0 0 12px; text-align:center; width:12px}
-.tree-tog:hover{color:var(--blue)}
-.tree-leaf{width:12px; flex:0 0 12px}
+.tree-tog{color:var(--dim); font-size:12px; padding:6px 0; line-height:1; flex:0 0 20px; text-align:center; width:20px; border-radius:5px}
+.tree-tog:hover{color:var(--blue); background:var(--ink)}
+.tree-leaf{width:20px; flex:0 0 20px}
 .row .name{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .row.sel .name{color:var(--text)}
 .row .ink{color:var(--yellow); font-size:11px; flex:0 0 auto}
-.addchild{opacity:0; color:var(--dim); font-size:13px; padding:1px 5px; border-radius:6px; line-height:1; flex:0 0 auto}
-.row:hover .addchild{opacity:.6}
-.addchild:hover{opacity:1!important; color:var(--green)}
-.row .del{opacity:0; color:var(--dim); display:flex; padding:2px; border-radius:6px; flex:0 0 auto}
-.row:hover .del{opacity:.7}
-.row .del:hover{opacity:1!important; color:var(--red)}
+.row .more{flex:0 0 30px; width:30px; height:30px; display:flex; align-items:center; justify-content:center;
+  color:var(--faint); border-radius:7px; font-size:15px; letter-spacing:1px}
+.row:hover .more{color:var(--dim)}
+.row .more:hover{color:var(--text); background:var(--ink)}
 .empty-folder{padding:22px 14px; text-align:center; color:var(--dim); font-size:12.5px; line-height:1.7; list-style:none}
-.newrow{padding:9px 12px; text-align:left; width:100%; color:var(--dim); border-top:1px solid var(--line2)}
-.newrow:hover{color:var(--green)}
-.newrow.danger{font-size:11px; color:var(--faint); border-top:none}
-.newrow.danger:hover{color:var(--red)}
-.newrow.sub{font-size:11px; text-decoration:none; display:block; border-top:none; color:var(--faint)}
-.newrow.sub:hover{color:var(--green)}
+.side-foot{border-top:1px solid var(--line2); padding:6px 8px calc(6px + env(safe-area-inset-bottom)); flex:0 0 auto}
+.foot-row{display:flex; align-items:center; gap:10px; width:100%; padding:10px 10px; border-radius:8px;
+  color:var(--dim); font-size:13px; text-align:left; text-decoration:none}
+.foot-row:hover{background:var(--panel); color:var(--text)}
+.foot-row .fic{flex:0 0 18px; text-align:center; font-size:13px}
+.foot-row.danger{color:var(--faint); font-size:12px}
+.foot-row.danger:hover{color:var(--red)}
 .scrim{display:none}
 [hidden]{display:none!important} /* author CSS can override UA [hidden]; this prevents that */
 
@@ -151,12 +165,16 @@ svg{display:block}
 .palette-list li:hover{background:var(--panel)}
 .palette-empty{padding:14px 16px; color:var(--dim); font-size:13px}
 
-/* [[ ]] link autocomplete */
-.wiki-popup{position:absolute; left:16px; bottom:16px; z-index:15; width:240px; max-height:220px; overflow-y:auto;
-  background:var(--surface); border:1px solid var(--line); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.35); padding:5px}
-.wiki-popup li{list-style:none; padding:7px 9px; border-radius:5px; font-size:13px; color:var(--text); cursor:pointer}
+/* [[ ]] link autocomplete + / block menu — position:fixed so they can ride above the
+   on-screen keyboard (placePopup + visualViewport), and draggable by the grip on top */
+.wiki-popup{position:fixed; left:16px; bottom:16px; z-index:36; width:250px; max-height:240px; overflow-y:auto;
+  background:var(--surface); border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.35); padding:5px}
+.wiki-popup li{list-style:none; padding:8px 10px; border-radius:6px; font-size:13px; color:var(--text); cursor:pointer}
 .wiki-popup li.sel{background:var(--sel-bg)}
 .wiki-popup li:hover{background:var(--panel)}
+.wiki-popup .popup-grip{display:flex; align-items:center; justify-content:center; padding:2px 0 4px;
+  color:var(--faint); font-size:11px; letter-spacing:3px; cursor:grab; touch-action:none; user-select:none}
+.wiki-popup .popup-grip:hover{color:var(--dim); background:none}
 
 /* backlinks panel */
 .backlinks{flex:0 0 auto; border-top:1px solid var(--line2); background:var(--ink)}
@@ -441,17 +459,47 @@ body.zen .bar, body.zen .status, body.zen .kbar, body.zen .side, body.zen .backl
   .only-mobile{display:flex}
   .file{display:none}
   .hide-sm{display:none}
-  .side{position:absolute; z-index:20; top:0; bottom:0; left:0; width:80%; max-width:300px;
+  .side{position:absolute; z-index:20; top:0; bottom:0; left:0; width:86%; max-width:320px;
     transform:translateX(-102%); transition:transform .18s ease; box-shadow:2px 0 24px rgba(0,0,0,.5)}
   .side.open{transform:translateX(0)}
   .scrim{display:block; position:absolute; inset:0; z-index:10; background:rgba(0,0,0,.45)}
-  .bar .tab{padding:5px 9px}
+  .bar .tab{padding:8px 10px; font-size:13px}
   /* the biggest space hogs on a narrow phone: "~/notes ❯" is decorative and the tab buttons'
      full "nsert"/"raw" words aren't needed next to the key letter that's already shown — trimming
      both is what actually keeps the icon row (new/search/theme/logout) on-screen without scrolling */
   .prompt .path, .prompt .sig, .bar .tabword{display:none}
-  .bar{gap:3px; padding-left:8px; padding-right:8px}
-  .iconbtn{width:26px; height:26px}
+  .bar{gap:4px; padding-left:8px; padding-right:8px}
+  .iconbtn{width:34px; height:34px}
+
+  /* touch sizing — a fingertip is ~40px wide; nothing interactive should be smaller */
+  .kbar button{min-width:42px; height:40px; font-size:14.5px}
+  .kbar .kdiv{margin:0 5px}
+  .row{padding:12px 6px 12px 8px; font-size:14px}
+  .row .more{flex:0 0 36px; width:36px; height:36px; color:var(--dim)}
+  .tree-tog, .tree-leaf{flex:0 0 24px; width:24px}
+  .tree-tog{font-size:13px; padding:8px 0}
+  .foot-row{padding:13px 12px; font-size:13.5px}
+  .btn-primary{padding:13px; font-size:14px}
+  .btn-quick{width:48px}
+  .side-search{padding:12px; font-size:13.5px}
+  .palette-list li{padding:12px 11px; font-size:14px}
+  .pick-list li{padding:13px 11px; font-size:14px}
+  .pick-list li button{padding:7px 11px; font-size:12.5px}
+  .wiki-popup li{padding:11px 10px; font-size:14px}
+  .szbtn, .toggle{padding:8px 11px; font-size:13px}
+  .ghost.sm{padding:8px 12px; font-size:13px}
+  .sw{width:26px; height:26px}
+  .block-todo input{width:18px; height:18px}
+  .backlinks-list li{padding:7px 11px; font-size:13px}
+  .code-btn{padding:6px 11px; font-size:12.5px}
+  .table-rm-row{width:22px; height:22px; line-height:20px}
+  .block-table td.table-handle, .block-table th.table-handle{width:24px}
+
+  /* modals become bottom sheets — thumb-reachable, native-app feel */
+  .modal-scrim{align-items:flex-end; padding:0}
+  .modal{max-width:100%; border-radius:16px 16px 0 0; border-bottom:none;
+    padding:18px 18px calc(18px + env(safe-area-inset-bottom)); max-height:82vh; overflow-y:auto}
+  .modal .row2 button{padding:12px}
 }
 /* longer usernames (kriyansi/bhavesh) need a bit more room back — only the very narrowest
    phones (iPhone SE and similar, ≤380px) still need this on top of the trims above */
@@ -1234,8 +1282,8 @@ function renderTreeNodes(nodesArr, depth) {
         '<span class="name">' + esc(n.title || "untitled") + "</span>" +
         (n.pinned ? '<span class="pin" title="pinned">★</span>' : "") +
         (n.hasInk ? '<span class="ink" title="has a sketch">✦</span>' : "") +
-        '<button class="addchild" data-par="' + esc(n.id) + '" aria-label="New note inside" title="New note inside">+</button>' +
-        '<button class="del" data-del="' + esc(n.id) + '" aria-label="Delete note">' + ICONS.trash + "</button>" +
+        // one always-visible ⋯ menu instead of hover-only buttons — hover doesn't exist on touch
+        '<button class="more" data-menu="' + esc(n.id) + '" aria-label="Note actions" title="Note actions">⋯</button>' +
       "</li>" +
       (hasKids && isOpen ? renderTreeNodes(n.children, depth + 1) : "")
     );
@@ -1257,41 +1305,124 @@ function toggleExpand(id) {
   renderList();
 }
 
-let sideMoreOpen = false; // whether the bottom-left "more" section (privacy/contact/delete account) is expanded
+let sideMoreOpen = false; // whether the footer "more" section (privacy/contact/delete account) is expanded
 
 function renderList() {
   expandToActive();
-  const rows = renderTreeNodes(buildTree(notes), 0);
+  const tree = buildTree(notes);
+  // pinned roots get their own section up top, like Notion's favorites
+  const pinnedRoots = tree.filter((n) => n.pinned);
+  const restRoots = tree.filter((n) => !n.pinned);
+  const pinnedRows = renderTreeNodes(pinnedRoots, 0);
+  const rows = renderTreeNodes(restRoots, 0);
   $("#side").innerHTML =
-    '<div class="side-head"><span>ls ~/notes</span>' +
+    '<div class="side-head"><span>' + esc(ME) + "@glyph</span>" +
     '<button class="iconbtn only-mobile" id="closeSide" aria-label="Close">' + ICONS.x + "</button></div>" +
-    '<ul class="list">' + (rows || '<li class="empty-folder">no notes yet<br>tap + new note below to start</li>') + "</ul>" +
-    '<button class="newrow" id="newRow">+ new note</button>' +
-    '<button class="newrow" id="openFileRow" title="Open a file from this device">open file</button>' +
-    (localFile ? '<button class="newrow" id="syncGlyphRow" title="Copy the open file into a new note">sync to glyph</button>' : "") +
-    '<button class="newrow" id="moreToggle">' + (sideMoreOpen ? "▾" : "▸") + ' more</button>' +
-    (sideMoreOpen ?
-      '<a class="newrow sub" href="/legal" target="_blank" rel="noopener">privacy &amp; terms</a>' +
-      '<a class="newrow sub" href="/contact" target="_blank" rel="noopener">contact</a>' +
-      '<button class="newrow danger" id="delAcctRow">delete account</button>'
-    : "");
-  // single delegated listener handles all interactions in the tree
-  $("#side").querySelector(".list").addEventListener("click", (e) => {
+    '<button class="side-search" id="sideSearch">' + ICONS.search + "<span>search notes &amp; commands…</span></button>" +
+    '<div class="side-primary">' +
+      '<button class="btn-primary" id="newRow">' + ICONS.plus + " new note</button>" +
+      '<button class="btn-quick" id="dailyRow" title="today\'s daily note">☀</button>' +
+    "</div>" +
+    '<div class="side-scroll" id="sideScroll">' +
+      (pinnedRows ? '<div class="section-label">★ pinned</div><ul class="list">' + pinnedRows + "</ul>" : "") +
+      '<div class="section-label">notes</div>' +
+      '<ul class="list">' + (rows || pinnedRows ? rows : '<li class="empty-folder">no notes yet<br>tap + new note above to start</li>') + "</ul>" +
+    "</div>" +
+    '<div class="side-foot">' +
+      '<button class="foot-row" id="tplRow"><span class="fic">▤</span>templates</button>' +
+      '<button class="foot-row" id="trashRow"><span class="fic">🗑</span>trash</button>' +
+      '<button class="foot-row" id="exportRow" title="Download every note + sketch as one zip"><span class="fic">⤓</span>export vault (.zip)</button>' +
+      '<button class="foot-row" id="graphRow"><span class="fic">◉</span>graph view</button>' +
+      '<button class="foot-row" id="openFileRow" title="Open a file from this device"><span class="fic">▣</span>open file</button>' +
+      (localFile ? '<button class="foot-row" id="syncGlyphRow" title="Copy the open file into a new note"><span class="fic">⇪</span>sync to glyph</button>' : "") +
+      '<button class="foot-row" id="moreToggle"><span class="fic">' + (sideMoreOpen ? "▾" : "▸") + "</span>more</button>" +
+      (sideMoreOpen ?
+        '<a class="foot-row" href="/legal" target="_blank" rel="noopener"><span class="fic">§</span>privacy &amp; terms</a>' +
+        '<a class="foot-row" href="/contact" target="_blank" rel="noopener"><span class="fic">✉</span>contact</a>' +
+        '<button class="foot-row danger" id="delAcctRow"><span class="fic">⚠</span>delete account</button>'
+      : "") +
+    "</div>";
+  // single delegated listener handles all interactions in both trees (pinned + notes)
+  $("#sideScroll").addEventListener("click", (e) => {
     const tog = e.target.closest("[data-tog]");
-    const del = e.target.closest("[data-del]");
-    const par = e.target.closest("[data-par]");
+    const menu = e.target.closest("[data-menu]");
     const row = e.target.closest(".row[data-id]");
-    if (del) { e.stopPropagation(); removeNote(del.getAttribute("data-del")); return; }
-    if (par) { e.stopPropagation(); newNote(par.getAttribute("data-par")); return; }
+    if (menu) { e.stopPropagation(); openNoteMenu(menu.getAttribute("data-menu")); return; }
     if (tog) { e.stopPropagation(); toggleExpand(tog.getAttribute("data-tog")); return; }
     if (row) { openNote(row.getAttribute("data-id")); closeSidebar(); }
   });
+  $("#sideSearch").onclick = () => { closeSidebar(); openPalette(); };
   $("#newRow").onclick = () => { closeSidebar(); openNewNoteMenu(); };
+  $("#dailyRow").onclick = () => { closeSidebar(); openDailyNote(); };
+  $("#tplRow").onclick = () => { closeSidebar(); openNewNoteMenu(); };
+  $("#trashRow").onclick = () => { closeSidebar(); openTrashModal(); };
+  $("#exportRow").onclick = () => { location.href = "/api/export.zip"; };
+  $("#graphRow").onclick = () => { closeSidebar(); openGraphModal(); };
   $("#openFileRow").onclick = () => openLocalFile();
   const syncRow = $("#syncGlyphRow"); if (syncRow) syncRow.onclick = () => syncLocalFileToNote();
   $("#moreToggle").onclick = () => { sideMoreOpen = !sideMoreOpen; renderList(); };
   const delBtn = $("#delAcctRow"); if (delBtn) delBtn.onclick = openDeleteAccountModal;
   const cs = $("#closeSide"); if (cs) cs.onclick = closeSidebar;
+}
+
+/* ---- per-note ⋯ menu (bottom sheet on phones) — every action, for ANY note, without
+   opening it first. The by-id helpers fetch the note when it isn't the active one. ---- */
+function openNoteMenu(id) {
+  const n = notes.find((x) => x.id === id);
+  if (!n) return;
+  const scrim = $("#modalScrim");
+  const items = [
+    ["open", "open note", () => { openNote(id); closeSidebar(); }],
+    ["new", "new note inside", () => openNewNoteMenu(id)],
+    ["pin", n.pinned ? "unpin" : "pin to top", () => togglePinById(id)],
+    ["copy", "duplicate", () => duplicateNoteById(id)],
+    ["move", "move into…", () => openMoveNoteModal(id)],
+    ["link", "copy link", async () => { const url = location.origin + "/#/n/" + encodeURIComponent(id); try { await navigator.clipboard.writeText(url); } catch (e) { prompt("copy this link:", url); } }],
+    ["md", "download .md", () => downloadNoteMdById(id)],
+    ["trash", "delete (goes to trash)", () => removeNote(id), true],
+  ];
+  scrim.innerHTML =
+    '<div class="modal wide"><h2 style="color:var(--blue)">' + esc(n.title || "untitled") + '</h2>' +
+    '<ul class="pick-list">' + items.map((it, i) =>
+      '<li data-act="' + i + '"' + (it[3] ? ' style="color:var(--red)"' : "") + '><span class="kind">' + it[0] + '</span><span class="grow">' + esc(it[1]) + "</span></li>").join("") +
+    "</ul></div>";
+  scrim.hidden = false;
+  scrim.onclick = (e) => { if (e.target === scrim) closeModal(); };
+  scrim.querySelectorAll("[data-act]").forEach((li) => {
+    li.onclick = () => { closeModal(); items[+li.getAttribute("data-act")][2](); };
+  });
+}
+
+async function togglePinById(id) {
+  if (active && active.id === id) { active.pinned = !active.pinned; scheduleSave(); await loadList(); return; }
+  try {
+    const n = await api("GET", "/api/notes/" + encodeURIComponent(id));
+    await api("PUT", "/api/notes/" + encodeURIComponent(id),
+      { title: n.title, body: n.body, strokes: n.strokes || [], parent: n.parent || null, pinned: !n.pinned });
+  } catch (e) {}
+  loadList();
+}
+
+async function duplicateNoteById(id) {
+  try {
+    const n = await api("GET", "/api/notes/" + encodeURIComponent(id));
+    const nid = uid();
+    await api("PUT", "/api/notes/" + nid,
+      { title: (n.title || "untitled") + " copy", body: n.body, strokes: n.strokes || [], parent: n.parent || null });
+  } catch (e) {}
+  loadList();
+}
+
+async function downloadNoteMdById(id) {
+  try {
+    const n = await api("GET", "/api/notes/" + encodeURIComponent(id));
+    const blob = new Blob([n.body || ""], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = (n.title || "note").replace(/[\\/:*?"<>|]/g, "_") + ".md";
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) {}
 }
 
 function openSidebar() { $("#side").classList.add("open"); $("#scrim").hidden = false; }
@@ -1475,11 +1606,14 @@ async function openTrashModal() {
   });
 }
 
-// move the open note into another note (or back to root) — nesting without drag & drop
-function openMoveNoteModal() {
-  if (!active) return;
+// move any note into another note (or back to root) — nesting without drag & drop.
+// No argument = the open note (palette action); the sidebar ⋯ menu passes an id.
+function openMoveNoteModal(targetId) {
+  targetId = targetId || (active && active.id);
+  const target = notes.find((n) => n.id === targetId);
+  if (!target) return;
   // a note can't move into itself or its own descendants (that would orphan the subtree)
-  const blocked = new Set([active.id]);
+  const blocked = new Set([targetId]);
   let grew = true;
   while (grew) {
     grew = false;
@@ -1488,7 +1622,7 @@ function openMoveNoteModal() {
   const scrim = $("#modalScrim");
   const candidates = notes.filter((n) => !blocked.has(n.id));
   scrim.innerHTML =
-    '<div class="modal wide"><h2 style="color:var(--blue)">move "' + esc(active.title) + '" into…</h2>' +
+    '<div class="modal wide"><h2 style="color:var(--blue)">move "' + esc(target.title) + '" into…</h2>' +
     '<input class="pick-input" id="movePickFilter" placeholder="filter notes…">' +
     '<ul class="pick-list" id="movePickList"></ul></div>';
   scrim.hidden = false;
@@ -1496,21 +1630,30 @@ function openMoveNoteModal() {
   const paint = (q) => {
     const list = (q ? candidates.filter((n) => fuzzyScore(q, n.title) >= 0) : candidates).slice(0, 30);
     $("#movePickList").innerHTML =
-      (active.parent ? '<li data-mv=""><span class="kind">root</span><span class="grow">move to top level</span></li>' : "") +
+      (target.parent ? '<li data-mv=""><span class="kind">root</span><span class="grow">move to top level</span></li>' : "") +
       list.map((n) => '<li data-mv="' + esc(n.id) + '"><span class="kind">note</span><span class="grow">' + esc(n.title) + "</span></li>").join("");
     scrim.querySelectorAll("[data-mv]").forEach((li) => {
-      li.onclick = () => {
-        active.parent = li.getAttribute("data-mv") || null;
-        closeModal();
-        scheduleSave();
-        loadList();
-        renderBar();
-      };
+      li.onclick = () => { closeModal(); reparentNote(targetId, li.getAttribute("data-mv") || null); };
     });
   };
   paint("");
   $("#movePickFilter").oninput = (e) => paint(e.target.value);
   $("#movePickFilter").focus();
+}
+
+async function reparentNote(id, parentId) {
+  if (active && active.id === id) {
+    active.parent = parentId;
+    scheduleSave(); renderBar();
+  } else {
+    try {
+      const n = await api("GET", "/api/notes/" + encodeURIComponent(id));
+      await api("PUT", "/api/notes/" + encodeURIComponent(id),
+        { title: n.title, body: n.body, strokes: n.strokes || [], parent: parentId, pinned: !!n.pinned });
+    } catch (e) {}
+  }
+  if (parentId) expanded.add(parentId);
+  loadList();
 }
 
 // graph view — every note as a dot on a circle, every [[link]] as a line. Not a physics
@@ -1825,6 +1968,75 @@ document.addEventListener("click", (e) => {
 // don't leave it stale-positioned under the bar across a resize/rotation — cheap to just reopen
 window.addEventListener("resize", () => { const d = $("#paletteDropdown"); if (d && !d.hidden) closePalette(); });
 
+/* ---- popup placement (shared by the [[ and / menus) ----
+   The popups are position:fixed and, by default, sit just above the on-screen keyboard
+   (visualViewport tells us how tall it is). Drag the grip on top to put a popup anywhere —
+   the spot is remembered per device; double-tap the grip to go back to automatic. */
+let popupPos = LC.get("glyph:popupPos") || null; // {x,y} chosen by dragging, null = automatic
+
+function placePopup(el) {
+  if (!el) return;
+  const vv = window.visualViewport;
+  const kbInset = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
+  const w = el.offsetWidth || 250, h = el.offsetHeight || 120;
+  if (popupPos) {
+    el.style.bottom = "auto";
+    el.style.left = Math.min(Math.max(4, popupPos.x), window.innerWidth - w - 4) + "px";
+    el.style.top = Math.min(Math.max(4, popupPos.y), window.innerHeight - kbInset - h - 4) + "px";
+  } else {
+    el.style.top = "auto";
+    el.style.left = "16px";
+    el.style.bottom = (kbInset + 58) + "px"; // clears the keyboard + the kbar riding on it
+  }
+}
+
+// builds the drag grip row and wires dragging onto it — called once per popup element
+function attachPopupGrip(el) {
+  const grip = document.createElement("li");
+  grip.className = "popup-grip";
+  grip.textContent = "≡ drag";
+  grip.title = "drag to move · double-tap to reset position";
+  let startX = 0, startY = 0, baseX = 0, baseY = 0, moved = false;
+  grip.addEventListener("pointerdown", (e) => {
+    e.preventDefault(); // don't blur the editor mid-autocomplete
+    grip.setPointerCapture(e.pointerId);
+    const rect = el.getBoundingClientRect();
+    startX = e.clientX; startY = e.clientY; baseX = rect.left; baseY = rect.top; moved = false;
+  });
+  grip.addEventListener("pointermove", (e) => {
+    if (!grip.hasPointerCapture || !grip.hasPointerCapture(e.pointerId)) return;
+    const dx = e.clientX - startX, dy = e.clientY - startY;
+    if (Math.abs(dx) + Math.abs(dy) > 4) moved = true;
+    if (!moved) return;
+    popupPos = { x: baseX + dx, y: baseY + dy };
+    placePopup(el);
+  });
+  grip.addEventListener("pointerup", () => { if (moved) LC.set("glyph:popupPos", popupPos); });
+  grip.addEventListener("dblclick", () => { popupPos = null; LC.del("glyph:popupPos"); placePopup(el); });
+  el.prepend(grip);
+}
+
+// one factory for both popups — a fixed-position <ul> on <body>
+function ensurePopup(id) {
+  let el = document.getElementById(id);
+  if (el) return el;
+  el = document.createElement("ul");
+  el.id = id;
+  el.className = "wiki-popup";
+  document.body.appendChild(el);
+  return el;
+}
+
+// every popup re-render goes through here: fresh items, fresh grip, correct position,
+// and the selected row kept in view
+function renderPopupItems(el, itemsHtml) {
+  el.innerHTML = itemsHtml;
+  attachPopupGrip(el);
+  placePopup(el);
+  const selEl = el.querySelector("li.sel");
+  if (selEl) selEl.scrollIntoView({ block: "nearest" });
+}
+
 /* ---- [[ ]] link autocomplete ---- */
 let wikiOpen = false;
 let wikiMatches = [];
@@ -1860,17 +2072,11 @@ function checkWikiTrigger(ed) {
 }
 
 function renderWikiPopup(ed) {
-  let el = $("#wikiPopup");
-  if (!el) {
-    el = document.createElement("ul");
-    el.id = "wikiPopup";
-    el.className = "wiki-popup";
-    $("#main").appendChild(el);
-  }
-  el.innerHTML = wikiMatches
+  const el = ensurePopup("wikiPopup");
+  renderPopupItems(el, wikiMatches
     .map((n, i) => '<li data-i="' + i + '" class="' + (i === wikiSel ? "sel" : "") + '">' + esc(n.title) + "</li>")
-    .join("");
-  el.querySelectorAll("li").forEach((li) => {
+    .join(""));
+  el.querySelectorAll("li[data-i]").forEach((li) => {
     li.onmousedown = (e) => { e.preventDefault(); insertWikiLink(ed, parseInt(li.getAttribute("data-i"), 10)); };
   });
 }
@@ -1878,7 +2084,7 @@ function renderWikiPopup(ed) {
 function paintWikiSelection() {
   const el = $("#wikiPopup");
   if (!el) return;
-  el.querySelectorAll("li").forEach((li, i) => {
+  el.querySelectorAll("li[data-i]").forEach((li, i) => {
     li.classList.toggle("sel", i === wikiSel);
     if (i === wikiSel) li.scrollIntoView({ block: "nearest" });
   });
@@ -3027,21 +3233,13 @@ function checkWikiTriggerCE(el, b) {
 let wikiCEBlock = null, wikiCEEl = null;
 
 function renderWikiPopupCE() {
-  let popup = $("#wikiPopup");
-  if (!popup) {
-    popup = document.createElement("ul");
-    popup.id = "wikiPopup";
-    popup.className = "wiki-popup";
-    $("#main").appendChild(popup);
-  }
-  popup.innerHTML = wikiMatches
+  const popup = ensurePopup("wikiPopup");
+  renderPopupItems(popup, wikiMatches
     .map((n, i) => '<li data-i="' + i + '" class="' + (i === wikiSel ? "sel" : "") + '">' + esc(n.title) + "</li>")
-    .join("");
-  popup.querySelectorAll("li").forEach((li) => {
+    .join(""));
+  popup.querySelectorAll("li[data-i]").forEach((li) => {
     li.onmousedown = (e) => { e.preventDefault(); insertWikiLinkCE(parseInt(li.getAttribute("data-i"), 10)); };
   });
-  const selEl = popup.querySelector("li.sel");
-  if (selEl) selEl.scrollIntoView({ block: "nearest" });
 }
 
 function insertWikiLinkCE(i) {
@@ -3104,22 +3302,13 @@ function checkSlashTrigger(el, b) {
 }
 
 function renderSlashPopup() {
-  let popup = $("#slashPopup");
-  if (!popup) {
-    popup = document.createElement("ul");
-    popup.id = "slashPopup";
-    popup.className = "wiki-popup"; // same look/position as the [[ autocomplete
-    $("#main").appendChild(popup);
-  }
-  popup.innerHTML = slashMatches
+  const popup = ensurePopup("slashPopup");
+  renderPopupItems(popup, slashMatches
     .map((it, i) => '<li data-i="' + i + '" class="' + (i === slashSel ? "sel" : "") + '">' + esc(it.label) + "</li>")
-    .join("");
-  popup.querySelectorAll("li").forEach((li) => {
+    .join(""));
+  popup.querySelectorAll("li[data-i]").forEach((li) => {
     li.onmousedown = (e) => { e.preventDefault(); runSlashItem(parseInt(li.getAttribute("data-i"), 10)); };
   });
-  // keep the highlighted item visible — the popup scrolls, arrow keys must follow it
-  const selEl = popup.querySelector("li.sel");
-  if (selEl) selEl.scrollIntoView({ block: "nearest" });
 }
 
 function closeSlash() {
@@ -3502,6 +3691,9 @@ function setupBlockDrag() {
 // visible area minus the keyboard; the gap between it and the layout viewport IS the
 // keyboard height, so translating the bar up by that much parks it right on top of it.
 function positionKbar() {
+  // keyboard height changed — the autocomplete popups ride above it too
+  placePopup($("#wikiPopup"));
+  placePopup($("#slashPopup"));
   const kb = $("#kbar");
   if (!kb || kb.hidden) return;
   const vv = window.visualViewport;

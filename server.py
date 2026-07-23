@@ -641,15 +641,30 @@ def purge_note(vault, note_id):
 
 
 SEED = """\
-# readme
+# readme — how to use glyph
 
-welcome to glyph — a notebook that's plain markdown underneath, drawable on
-top, and lives in your own private vault. this note is your tour; edit or
-delete it any time, it's just a note.
+welcome! glyph is a notebook that's plain markdown underneath, drawable on
+top, and lives in your own private vault. this note is the manual — it's
+just a note, so edit it, draw on it, or delete it whenever you like.
 
 > [!tip] the three things worth learning first
-> type `/` at the start of any line for the block menu · tap **+** for
-> templates · press Ctrl/Cmd-K to search inside every note you have
+> type `/` at the start of any line for the block menu · tap **+** for a
+> new note or a template · search everything with the bar up top (Ctrl-K)
+
+## where everything is
+
+- **top bar** — menu (opens the sidebar), the search bar (notes, commands,
+  and full-text search inside every note), insert/draw switches, + new
+  note, theme toggle, log out
+- **sidebar** (☰ on a phone) — search, **+ new note**, ☀ today's daily
+  note, your pinned notes, the note tree, and at the bottom: templates,
+  trash, export vault, graph view, open file
+- **⋯ next to any note** — open, add a note inside, pin, duplicate,
+  move, copy link, download, delete
+- **bar above the keyboard** — every block type, bold/italic, indent,
+  move block up/down, undo/redo. it floats on top of the phone keyboard
+- **status bar** (bottom) — current mode, note name, to-do progress,
+  sync state
 
 ## writing
 
@@ -660,47 +675,63 @@ type markdown and it becomes real formatting as you go:
 - `> ` quote · `> [!tip] ` callout · `---` divider
 - three backticks for a code block (language label + copy button included)
 
-- [ ] this is a to-do — the status bar down there is counting it
+or type `/` on an empty line and pick from the menu instead — on a phone
+the menu floats above the keyboard, and you can drag it by its grip to
+wherever you want it (double-tap the grip to reset).
+
+- [ ] this is a to-do — the status bar is counting it right now
 - [ ] tables move like a spreadsheet: Tab next cell, Enter next row
 
-select text for the floating **bold** / *italic* / ==highlight== toolbar,
-or use the bar above the keyboard on a phone or tablet. paste a URL over
-selected text and it becomes a link. emoji shortcodes work too — type
-`:fire:` and get 🔥.
+select text and a floating toolbar appears: **bold**, *italic*,
+~~strike~~, `code`, ==highlight==, or turn the selection into a [[link]].
+paste a URL over selected text and it becomes a link. `:fire:` becomes 🔥.
+Shift-Enter makes a line break inside the same paragraph.
 
-undo is real everywhere: Ctrl/Cmd-Z for text, same keys for pen strokes
-in draw mode. deleted notes wait in trash for 30 days.
+undo is real everywhere — Ctrl/Cmd-Z for text, the same keys (or the
+toolbar buttons) for pen strokes while drawing.
 
 ## drawing
 
-touch the page with an apple pencil and you're drawing — same page as your
-text, no separate screen. fingers still scroll. pens, a marker, an eraser
-and undo/redo live in the toolbar; tap done to go back to typing.
+touch the page with an apple pencil and you're instantly drawing — same
+page as your text, no separate screen. fingers still scroll. in the draw
+toolbar: six pen colours, three sizes, a translucent marker, an eraser,
+undo/redo/clear, and **done** to go back to typing. pen-only is on by
+default so your resting palm never draws.
 
 ## linking & finding
 
-- type `[[` to link to another note — backlinks and unlinked mentions
-  show up at the bottom of the note they point to
-- `#tags` are tappable — one tap searches the tag everywhere
-- graph view (in the palette) draws every note and link as a map
-- pin notes to the top, nest notes inside notes, drag blocks to reorder
+- type `[[` to link to another note — pick from the popup as you type
+- backlinks and unlinked mentions appear at the bottom of the linked note
+- `#tags` are tappable — one tap searches that tag everywhere
+- the search bar looks **inside** every note, with a snippet of the match
+- **graph view** (sidebar) draws your whole vault as a map — tap a dot
+- pin notes ★, nest notes inside notes, drag blocks by the ⋮⋮ handle
 
 ## planners & templates
 
-tap **+** and pick a template: daily planner, weekly planner, money
-planner, habit tracker, monthly calendar, project tracker, travel planner
-and more — or save any note of yours as a template ("save note as
-template" in the palette).
+tap **+** and pick: daily planner, weekly planner, money planner, habit
+tracker, monthly calendar (a real calendar for this month), project
+tracker, travel planner, reading list, meal planner, workout log, study
+notes, weekly review — or save any note of yours as a template ("save
+note as template" in the search bar).
+
+## everything in the search bar
+
+type what you want into the search bar — it's also the command menu:
+undo · redo · zen mode · print / save as PDF · note info · vault stats ·
+outline · random note · copy link · duplicate · move note · check all
+to-dos · small text · narrow page · spellcheck · sort sidebar · trash ·
+export — if glyph can do it, it's in there.
 
 ## your data is yours
 
 notes are plain markdown files. point Obsidian or Syncthing at your vault
-folder and everything opens there too. download any note as .md — or your
-whole vault as a .zip — from the palette, whenever you want. no lock-in,
-no analytics, no third parties.
+folder and everything opens there too. download any note as .md or the
+whole vault as .zip from the sidebar. deleted notes wait in trash for 30
+days. no lock-in, no analytics, no third parties.
 
-press ? for every keyboard shortcut. start typing, or just touch the page
-with a pencil.
+press ? for the full keyboard shortcut list. start typing, or touch the
+page with a pencil.
 """
 
 
