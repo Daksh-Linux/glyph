@@ -49,6 +49,11 @@ body{
   font-family:var(--mono); font-size:14px; line-height:1.55;
   -webkit-font-smoothing:antialiased;
 }
+/* inset:0 is the no-JS default; syncViewport() overrides top/height from visualViewport so
+   the shell tracks the VISIBLE area (iPadOS shifts the layout viewport under the keyboard
+   instead of shrinking it, which used to push the top bar off-screen). top/height are used
+   deliberately instead of a transform — a transformed ancestor would become the containing
+   block for every position:fixed child (palette dropdown, modals) and misplace them. */
 .app{position:fixed; inset:0; display:flex; flex-direction:column}
 .spacer{flex:1}
 button{font-family:var(--mono); cursor:pointer; color:inherit; background:none; border:none}
@@ -206,7 +211,10 @@ svg{display:block}
 /* the note area is now one shared surface: .note-scroll scrolls, .note-surface holds the text
    layer (#blockEditor) AND the ink canvases stacked on top of each other. Text and drawing live
    on the same canvas — draw mode just changes which layer receives input, nothing is rebuilt. */
-.note-scroll{flex:1; overflow-y:auto; overflow-x:hidden; position:relative; min-height:0}
+/* overscroll-behavior:contain stops a scroll that reaches the end from chaining out to the
+   document (which on iOS turns into the rubber-band that makes scrolling feel stuck) */
+.note-scroll{flex:1; overflow-y:auto; overflow-x:hidden; position:relative; min-height:0;
+  overscroll-behavior:contain; -webkit-overflow-scrolling:touch}
 .note-surface{position:relative; min-height:100%}
 /* ink canvases cover the whole surface; pointer-events:none means in text mode every tap falls
    straight through to the text underneath — the ink is just visible on top */
@@ -228,12 +236,16 @@ svg{display:block}
   background:var(--ink); border-top:1px solid var(--line); overflow-x:auto; scrollbar-width:none;
   padding-bottom:calc(4px + env(safe-area-inset-bottom))}
 .kbar::-webkit-scrollbar{display:none}
+/* the home-indicator inset is meaningless while the keyboard covers it — leaving it in was
+   the empty strip under the keyboard bar on iPad */
+body.kb-open .kbar{padding-bottom:4px}
 .kbar button{flex:0 0 auto; min-width:34px; height:32px; padding:0 8px; border-radius:6px;
   color:var(--dim); font-size:13px; display:flex; align-items:center; justify-content:center; white-space:nowrap}
 .kbar button:hover{color:var(--text); background:var(--panel)}
 .kbar button:active{color:var(--text); background:var(--sel-bg)}
 .kbar .kdiv{flex:0 0 1px; height:20px; background:var(--line2); margin:0 4px}
-.kbar.floating{position:fixed; left:0; right:0; bottom:0; z-index:30}
+/* (the old .kbar.floating transform hack is gone — the shell is now sized to the visible
+   area by syncViewport(), so the bar is just the last row of the flex column) */
 
 /* inline rendering extras */
 .inline-code{background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:0 5px; font-size:.9em}
@@ -1989,7 +2001,9 @@ let popupPos = LC.get("glyph:popupPos") || null; // {x,y} chosen by dragging, nu
 function placePopup(el) {
   if (!el) return;
   const vv = window.visualViewport;
-  const kbInset = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
+  // same metrics the shell uses, so the popup and the keyboard bar agree on where the
+  // keyboard starts (one source of truth — see viewportMetrics)
+  const kbInset = vv ? viewportMetrics(window.innerHeight, vv.height, vv.offsetTop).kbInset : 0;
   const w = el.offsetWidth || 250, h = el.offsetHeight || 120;
   if (popupPos) {
     el.style.bottom = "auto";
@@ -3784,22 +3798,65 @@ function setupBlockDrag() {
 // floats the kbar on top of the on-screen keyboard. The visualViewport API reports the
 // visible area minus the keyboard; the gap between it and the layout viewport IS the
 // keyboard height, so translating the bar up by that much parks it right on top of it.
+/* ---- viewport sync — the one place the on-screen keyboard is dealt with ----
+   Two different browser behaviors have to end up looking the same:
+   - Android Chrome shrinks the layout viewport when the keyboard opens, so a fixed
+     inset:0 shell already ends above the keyboard.
+   - iOS/iPadOS does NOT. The layout viewport keeps its full height and Safari scrolls it
+     upward inside the smaller visual viewport. A fixed inset:0 shell therefore has its top
+     pushed off-screen (vanishing top bar) and its bottom hidden behind the keyboard
+     (unreachable scroll area, keyboard bar appearing to come and go).
+   Pinning the shell to visualViewport's top+height makes it exactly cover what the user can
+   actually see on every platform — after which the keyboard bar is simply the last row of a
+   normal flex column and needs no floating tricks at all. */
+function viewportMetrics(innerH, vvH, vvOffsetTop) {
+  const top = Math.max(0, vvOffsetTop || 0);
+  const height = vvH || innerH;
+  // how much of the layout viewport is hidden below the visible area — i.e. the keyboard
+  const kbInset = Math.max(0, innerH - height - top);
+  return { top, height, kbInset, kbOpen: kbInset > 100 };
+}
+
+function syncViewport() {
+  const vv = window.visualViewport;
+  if (!vv) return; // no support: the CSS inset:0 default still gives a sane full-screen shell
+  const app = document.querySelector(".app");
+  const m = viewportMetrics(window.innerHeight, vv.height, vv.offsetTop);
+  if (app) {
+    app.style.top = m.top + "px";
+    app.style.height = m.height + "px";
+    app.style.bottom = "auto"; // top+height+bottom would be over-constrained
+  }
+  // the modal layer is a fixed inset:0 sibling, so it needs the same treatment — otherwise
+  // a bottom-sheet dialog with a focused field (move note, delete account) sits behind the
+  // keyboard on iPad
+  const scrim = $("#modalScrim");
+  if (scrim) {
+    scrim.style.top = m.top + "px";
+    scrim.style.height = m.height + "px";
+    scrim.style.bottom = "auto";
+  }
+  document.body.classList.toggle("kb-open", m.kbOpen);
+  positionKbar();
+}
+
 function positionKbar() {
-  // keyboard height changed — the autocomplete popups ride above it too
+  // the bar rides in normal flow now; only the free-floating popups need repositioning
   placePopup($("#wikiPopup"));
   placePopup($("#slashPopup"));
-  const kb = $("#kbar");
-  if (!kb || kb.hidden) return;
-  const vv = window.visualViewport;
-  if (!vv) return;
-  const inset = window.innerHeight - vv.height - vv.offsetTop;
-  if (inset > 60) { kb.classList.add("floating"); kb.style.transform = "translateY(" + (-inset) + "px)"; }
-  else { kb.classList.remove("floating"); kb.style.transform = ""; }
 }
+
 if (window.visualViewport) {
-  window.visualViewport.addEventListener("resize", positionKbar);
-  window.visualViewport.addEventListener("scroll", positionKbar);
+  window.visualViewport.addEventListener("resize", syncViewport);
+  window.visualViewport.addEventListener("scroll", syncViewport);
 }
+window.addEventListener("orientationchange", () => setTimeout(syncViewport, 250));
+// iOS scrolls the document itself to reveal a focused field. Our shell is fixed and the
+// document is never meant to scroll, so any document scroll is that artifact — undo it,
+// otherwise the top bar stays pushed up even after the shell is resized correctly.
+window.addEventListener("scroll", () => {
+  if (window.scrollY !== 0 || window.scrollX !== 0) window.scrollTo(0, 0);
+}, { passive: true });
 
 /* ---- ink canvas sizing (unified surface) ----
    The canvases must cover everything: the visible viewport, all the text, and every stroke
@@ -4316,6 +4373,16 @@ document.addEventListener("focusin", (e) => {
     mode = "insert";
     renderBar(); renderStatus();
   }
+  // the keyboard animates in over ~300ms and can end up covering the block just focused;
+  // once the shell has resized (syncViewport), pull that block back into view
+  const target = e.target;
+  setTimeout(() => {
+    if (document.activeElement !== target) return; // focus moved on — don't yank the view
+    const scroller = $("#noteScroll");
+    if (!scroller || !scroller.contains(target)) return;
+    const r = target.getBoundingClientRect(), s = scroller.getBoundingClientRect();
+    if (r.bottom > s.bottom - 8 || r.top < s.top + 8) target.scrollIntoView({ block: "center" });
+  }, 350);
 });
 
 // tapping the empty space below the last block: if the last block already has content, start a
@@ -4412,6 +4479,7 @@ setInterval(pollActiveNote, 2000);
     ME = (await res.json()).username;
   } catch (e) { window.location.href = "/login"; return; }
 
+  syncViewport(); // size the shell to the visible area before the first paint settles
   // show cached list immediately so app feels instant — server fetch updates it in loadList()
   const cachedList = lcLoadList();
   if (cachedList.length) { notes = cachedList; renderList(); }
