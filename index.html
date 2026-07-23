@@ -2461,6 +2461,26 @@ function looksPreformatted(text) {
   return formatted / lines.length >= 0.4;
 }
 
+// A text block somehow ended up holding multiple lines (keyboard-chip paste, drag-drop,
+// autofill — anything that bypasses the paste event). Same treatment as a normal paste:
+// column-aligned content becomes ONE verbatim code block, everything else parses into
+// real blocks. The current block is replaced wholesale — its content is inside `raw`.
+function handleMultilineInsertion(b, raw) {
+  const i = blocks.findIndex((x) => x.id === b.id);
+  if (i === -1) return;
+  if (looksPreformatted(raw)) {
+    const nb = { id: uid(), type: "code", text: raw, lang: "" };
+    blocks.splice(i, 1, nb);
+    syncBody(); renderEditorBlocks(); focusBlock(nb.id);
+    return;
+  }
+  const parsed = parseBlocks(raw);
+  blocks.splice(i, 1, ...parsed);
+  syncBody(); renderEditorBlocks();
+  const last = parsed[parsed.length - 1];
+  if (last) focusBlock(last.id);
+}
+
 /* ---- emoji shortcodes — type :fire: and get 🔥 the moment the closing : lands ---- */
 const EMOJI = {
   smile: "😄", joy: "😂", cry: "😢", sad: "😞", angry: "😠", cool: "😎", wink: "😉",
@@ -2762,7 +2782,18 @@ function renderBlockEl(b) {
   textEl.setAttribute("data-placeholder", blockPlaceholder(b));
 
   textEl.addEventListener("input", (ev) => {
-    b.text = textEl.textContent;
+    // innerText, NOT textContent: Android keyboards (Gboard's clipboard chip especially)
+    // paste without firing a paste event — the lines arrive as raw DOM where textContent
+    // silently drops every line break, gluing a whole table onto one line. innerText keeps
+    // them, and any multiline arrival goes through the same smart-paste logic either way.
+    let raw = textEl.innerText != null ? textEl.innerText : textEl.textContent;
+    raw = raw.replace(/\n+$/, ""); // contenteditable keeps a trailing <br> → phantom newline
+    // more line breaks than the block already had (Shift+Enter makes legitimate ones) =
+    // a multiline paste arrived outside the paste event — run it through smart paste
+    const hadBreaks = ((b.text || "").match(/\n/g) || []).length;
+    const hasBreaks = (raw.match(/\n/g) || []).length;
+    if (hasBreaks > hadBreaks) { handleMultilineInsertion(b, raw); return; }
+    b.text = raw;
     // a just-typed ":" may have closed an emoji shortcode — swap it in place, keep the caret
     if (ev && ev.data === ":") {
       const caret = getCaretOffset(textEl);
