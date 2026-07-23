@@ -1417,6 +1417,7 @@ function renderList() {
       '<button class="foot-row" id="graphRow"><span class="fic">◉</span>graph view</button>' +
       '<button class="foot-row" id="openFileRow" title="Open a file from this device"><span class="fic">▣</span>open file</button>' +
       (localFile ? '<button class="foot-row" id="syncGlyphRow" title="Copy the open file into a new note"><span class="fic">⇪</span>sync to glyph</button>' : "") +
+      '<button class="foot-row" id="keepRow" title="Bring your notes over from Google Keep"><span class="fic">↧</span>import from keep</button>' +
       '<button class="foot-row" id="helpRow"><span class="fic">?</span>help</button>' +
       '<button class="foot-row" id="moreToggle"><span class="fic">' + (sideMoreOpen ? "▾" : "▸") + "</span>more</button>" +
       (sideMoreOpen ?
@@ -1443,6 +1444,7 @@ function renderList() {
   $("#graphRow").onclick = () => { closeSidebar(); openGraphModal(); };
   $("#openFileRow").onclick = () => openLocalFile();
   const syncRow = $("#syncGlyphRow"); if (syncRow) syncRow.onclick = () => syncLocalFileToNote();
+  $("#keepRow").onclick = () => { closeSidebar(); openKeepImportModal(); };
   $("#helpRow").onclick = () => { closeSidebar(); openHelpModal(); };
   $("#moreToggle").onclick = () => { sideMoreOpen = !sideMoreOpen; renderList(); };
   const delBtn = $("#delAcctRow"); if (delBtn) delBtn.onclick = openDeleteAccountModal;
@@ -1656,6 +1658,60 @@ function openNoteInfoModal() {
     '</div>';
   scrim.hidden = false;
   scrim.onclick = (e) => { if (e.target === scrim) closeModal(); };
+}
+
+/* ---- import from Google Keep ----
+   Takeout gives you a .zip; the server unpacks it (stdlib zipfile) and turns every Keep
+   note into a real glyph note. Everything lands in one dated folder note so a big import
+   never floods the sidebar — and it can be moved or ungrouped afterwards like any note. */
+function openKeepImportModal() {
+  const scrim = $("#modalScrim");
+  scrim.innerHTML =
+    '<div class="modal wide"><h2 style="color:var(--blue)">import from google keep</h2>' +
+    '<div class="sc-row"><kbd>1</kbd><span>open <b>takeout.google.com</b> and press "deselect all"</span></div>' +
+    '<div class="sc-row"><kbd>2</kbd><span>tick <b>Keep</b> only, then "next step" → "create export"</span></div>' +
+    '<div class="sc-row"><kbd>3</kbd><span>google emails you a .zip — download it</span></div>' +
+    '<div class="sc-row"><kbd>4</kbd><span>pick that .zip below</span></div>' +
+    '<input type="file" id="keepFile" accept=".zip,.tgz,.gz,application/zip" style="margin-top:14px">' +
+    '<div class="hint">notes, checklists (ticks and all), labels → #tags, pinned notes and ' +
+    'archived notes all come across. notes in Keep\'s trash are skipped. your tables and ' +
+    'lined-up text keep their spacing. nothing is sent anywhere except your own vault.</div>' +
+    '<div class="err" id="keepErr"></div>' +
+    '<div class="row2"><button class="cancel" id="keepCancel">cancel</button>' +
+    '<button class="danger-btn" id="keepGo" style="background:var(--blue);border-color:var(--blue)">import</button></div></div>';
+  scrim.hidden = false;
+  scrim.onclick = (e) => { if (e.target === scrim) closeModal(); };
+  $("#keepCancel").onclick = closeModal;
+  $("#keepGo").onclick = async () => {
+    const file = $("#keepFile").files[0];
+    const err = $("#keepErr"), btn = $("#keepGo");
+    err.classList.remove("show");
+    if (!file) { err.textContent = "pick your takeout .zip first"; err.classList.add("show"); return; }
+    btn.disabled = true; btn.textContent = "importing…";
+    try {
+      // one folder note to hold the import, created first so the notes can nest under it
+      const folderId = uid();
+      const stamp = new Date().toLocaleDateString();
+      await api("PUT", "/api/notes/" + folderId,
+        { title: "google keep (" + stamp + ")", body: "imported from google keep on " + stamp + "\n", parent: null });
+      const res = await fetch("/api/import/keep?parent=" + encodeURIComponent(folderId), { method: "POST", body: file });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "import failed");
+      closeModal();
+      await loadList();
+      expanded.add(folderId);
+      renderList();
+      await openNote(folderId).catch(() => {});
+      alert("imported " + data.imported + " note" + (data.imported === 1 ? "" : "s") +
+        (data.skippedTrashed ? "\nskipped " + data.skippedTrashed + " in keep's trash" : "") +
+        (data.tooMany ? "\n" + data.tooMany + " more were left out (limit reached)" : "") +
+        "\n\nthey're in the \"google keep\" folder in your sidebar.");
+    } catch (e) {
+      err.textContent = e.message || "import failed";
+      err.classList.add("show");
+      btn.disabled = false; btn.textContent = "import";
+    }
+  };
 }
 
 // trash — deleted notes wait here for 30 days; restore or delete forever
@@ -1873,6 +1929,7 @@ function paletteItemGroups() {
       run: () => { narrowPage = !narrowPage; setPref("narrowPage", narrowPage); applyEditorPrefs(); } },
     { kind: "action", label: spellcheckOn ? "disable spellcheck" : "enable spellcheck",
       run: () => { spellcheckOn = !spellcheckOn; setPref("spellcheck", spellcheckOn); if (active && mode !== "draw") renderEditorBlocks(); } },
+    { kind: "action", label: "import from google keep", run: () => openKeepImportModal() },
     { kind: "action", label: "help & user guide", run: () => openHelpModal() },
     { kind: "action", label: "keyboard shortcuts", run: () => openHelpModal() },
     { kind: "action", label: currentTheme() === "dark" ? "switch to light theme" : "switch to dark theme",
@@ -4803,6 +4860,13 @@ const HELP_SECTIONS = [
     ["small text / narrow page / spellcheck", "palette toggles, remembered per device"],
     ["theme", "sun/moon button in the top bar — light and dark"],
     ["print / pdf", "palette → print — clean black-on-white layout"],
+  ]},
+  { title: "coming from google keep", rows: [
+    ["import everything", "sidebar → import from keep. Get your export at takeout.google.com (deselect all, tick Keep), then pick the .zip"],
+    ["what comes across", "notes, checklists with their ticks, labels → #tags, pinned notes, archived notes (tagged #archived)"],
+    ["what doesn't", "notes in Keep's trash are skipped; images aren't supported yet, so attachments are listed by name"],
+    ["where it lands", "one \"google keep\" folder in the sidebar — move notes out of it whenever you like"],
+    ["copy-paste instead", "pasting from Keep works too, and keeps column-aligned text exactly as it was"],
   ]},
   { title: "your data", rows: [
     ["plain markdown", "notes are .md files in your private vault — Obsidian and Syncthing open them as-is"],

@@ -32,7 +32,10 @@ import shutil
 import socket
 import threading
 import time
+import tarfile
 import zipfile
+from html import unescape
+from html.parser import HTMLParser
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, unquote, parse_qs
@@ -668,6 +671,252 @@ def purge_note(vault, note_id):
             pass
 
 
+# --- google keep import --------------------------------------------------
+# Takeout hands you a .zip (or .tgz) with one .json per Keep note (plus .html copies and
+# attachments). The JSON is the good path — it keeps checklists, labels, pins and archive
+# state as structured data instead of markup. Everything here is stdlib.
+IMPORT_MAX_SIZE = 30 * 1024 * 1024  # a Keep export of text notes is tiny; images inflate it
+IMPORT_MAX_NOTES = 2000             # a sane ceiling so one upload can't fill the disk
+
+
+def looks_preformatted(text):
+    """Same rule the editor's paste path uses: column-aligned content (Keep's hand-made
+    tables, pasted spreadsheets) must keep its spacing instead of being re-parsed as lists."""
+    lines = [l for l in (text or "").replace("\r", "").split("\n") if l.strip()]
+    if len(lines) < 2:
+        return False
+    hits = sum(1 for l in lines
+               if re.match(r"^\s+\S", l) or "\t" in l or re.search(r"\S {3,}\S", l))
+    return hits / len(lines) >= 0.4
+
+
+def escape_md_line(line):
+    """Backslash-escape the leading markdown markers so a line stays literal text forever.
+    Mirrors escapeMdLine() in index.html — the editor hides these backslashes when rendering."""
+    line = re.sub(r"^(\s*)(\d+)\.", r"\1\2\\.", line)
+    line = re.sub(r"^(\s*)(-{3,})(\s*)$", r"\1\\\2\3", line)
+    line = re.sub(r"^(\s*)([-*+])(\s)", r"\1\\\2\3", line)
+    line = re.sub(r"^(\s*)(#{1,6}\s)", r"\1\\\2", line)
+    line = re.sub(r"^(\s*)>", r"\1\\>", line)
+    line = re.sub(r"^(\s*)(```)", r"\1\\\2", line)
+    line = re.sub(r"^(\s*)\|", r"\1\\|", line)
+    return line
+
+
+def tagify(label):
+    """'Shopping List' -> '#shopping-list' — glyph renders #tags as tappable chips."""
+    slug = re.sub(r"[^\w/-]+", "-", (label or "").strip().lower()).strip("-")
+    return "#" + slug if slug else ""
+
+
+def keep_json_to_note(data):
+    """One Keep Takeout JSON object -> (title, markdown body, pinned)."""
+    title = (data.get("title") or "").strip()
+    parts = []
+
+    text = (data.get("textContent") or "").rstrip()
+    if text.strip():
+        if looks_preformatted(text):
+            parts.append("\n".join(escape_md_line(l) for l in text.split("\n")))
+        else:
+            parts.append(text)
+
+    # Keep checklists map straight onto markdown to-dos, ticks included
+    items = data.get("listContent") or []
+    if items:
+        if parts:
+            parts.append("")
+        for item in items:
+            mark = "x" if item.get("isChecked") else " "
+            parts.append("- [%s] %s" % (mark, (item.get("text") or "").strip()))
+
+    # glyph has no image support yet, so name the attachments rather than dropping them
+    # silently — the files are still in the user's Takeout download
+    atts = [a.get("filePath") for a in (data.get("attachments") or []) if a.get("filePath")]
+    if atts:
+        parts.append("")
+        for f in atts:
+            parts.append("*keep attachment: %s*" % os.path.basename(f))
+
+    tags = [tagify(l.get("name")) for l in (data.get("labels") or []) if l.get("name")]
+    if data.get("isArchived"):
+        tags.append("#archived")
+    tags = [t for t in tags if t]
+    if tags:
+        parts.append("")
+        parts.append(" ".join(tags))
+
+    body = "\n".join(parts).strip()
+    if not title:
+        # untitled Keep notes are common — take the first real line, same as glyph's own
+        # "title comes from the first line" rule
+        first = next((l for l in body.splitlines() if l.strip()), "")
+        title = re.sub(r"^[\\\s#>*+-]*(\[[ xX]\])?\s*", "", first).strip()[:60] or "keep note"
+    return title, body, bool(data.get("isPinned"))
+
+
+class _KeepHTML(HTMLParser):
+    """Fallback for exports that only contain .html. Takeout wraps each note in
+    div.title / div.content, with <br> for line breaks and checkbox <input>s for lists."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.stack = []
+        self.title = []
+        self.content = []
+        self.checked = None
+
+    def handle_starttag(self, tag, attrs):
+        a = dict(attrs)
+        cls = a.get("class", "")
+        if tag == "div" and "title" in cls:
+            self.stack.append("title")
+        elif tag == "div" and ("content" in cls or "listitem" in cls):
+            self.stack.append("content")
+        elif tag == "br":
+            if self.stack:
+                self.content.append("\n")
+        elif tag == "input" and a.get("type") == "checkbox":
+            self.content.append("\n- [%s] " % ("x" if "checked" in a else " "))
+
+    def handle_endtag(self, tag):
+        if tag == "div" and self.stack:
+            self.stack.pop()
+
+    def handle_data(self, data):
+        if not self.stack:
+            return
+        if self.stack[-1] == "title":
+            self.title.append(data)
+        else:
+            self.content.append(data)
+
+
+def keep_html_to_note(raw):
+    p = _KeepHTML()
+    try:
+        p.feed(raw)
+    except Exception:  # noqa: BLE001 - malformed export shouldn't abort the whole import
+        return None
+    title = unescape(" ".join("".join(p.title).split()))
+    body = "\n".join(l.rstrip() for l in "".join(p.content).splitlines())
+    body = re.sub(r"\n{3,}", "\n\n", body).strip()
+    if not body and not title:
+        return None
+    if not title:
+        title = (body.splitlines() or ["keep note"])[0][:60]
+    return title, body, False
+
+
+def _import_members(blob):
+    """Yields (name, bytes) for every file in a .zip or .tgz Takeout archive."""
+    try:
+        zf = zipfile.ZipFile(io.BytesIO(blob))
+    except zipfile.BadZipFile:
+        zf = None
+    if zf:
+        for info in zf.infolist():
+            if info.is_dir() or info.file_size > 4 * 1024 * 1024:
+                continue
+            try:
+                yield info.filename, zf.read(info)
+            except Exception:  # noqa: BLE001
+                continue
+        return
+    with tarfile.open(fileobj=io.BytesIO(blob)) as tf:  # raises if it's neither format
+        for member in tf.getmembers():
+            if not member.isfile() or member.size > 4 * 1024 * 1024:
+                continue
+            f = tf.extractfile(member)
+            if f:
+                yield member.name, f.read()
+
+
+def import_keep_archive(vault, blob, parent_id=None):
+    """Creates one glyph note per Keep note. Returns a summary dict."""
+    members = list(_import_members(blob))
+    # A full Takeout can contain Photos, Drive, Mail... Restrict to the Keep folder when
+    # there is one; otherwise accept a bare export, but then every file has to actually look
+    # like a Keep note (see below) so a random .zip can't import junk.
+    scoped = [(n, r) for n, r in members
+              if "/keep/" in n.lower() or n.lower().startswith("keep/")]
+    in_keep_folder = bool(scoped)
+    if in_keep_folder:
+        members = scoped
+
+    json_notes, html_notes, txt_notes = [], [], []
+    for name, raw in members:
+        low = name.lower()
+        base = os.path.basename(low)
+        if base.startswith(".") or base in ("labels.txt", "archive_browser.html"):
+            continue  # Keep's own metadata files, not notes
+        if low.endswith(".json"):
+            json_notes.append((name, raw))
+        elif low.endswith(".html"):
+            html_notes.append((name, raw))
+        elif low.endswith(".txt") and in_keep_folder:
+            txt_notes.append((name, raw))  # older exports; only trusted inside a Keep folder
+
+    parsed, skipped, errors = [], 0, []
+
+    def is_keep_note(d):
+        return isinstance(d, dict) and any(k in d for k in ("textContent", "listContent")) \
+            and any(k in d for k in ("isTrashed", "isPinned", "isArchived", "color", "title"))
+
+    for name, raw in json_notes:
+        try:
+            data = json.loads(raw.decode("utf-8", "replace"))
+        except ValueError:
+            errors.append(os.path.basename(name))
+            continue
+        if not is_keep_note(data):
+            continue  # settings/labels files live in the same folder
+        if data.get("isTrashed"):
+            skipped += 1
+            continue
+        parsed.append(keep_json_to_note(data))
+
+    # only fall back to the html/txt copies when the export had no json at all — Takeout
+    # ships both, and importing each note twice is worse than importing it once
+    if not parsed:
+        for name, raw in html_notes:
+            html = raw.decode("utf-8", "replace")
+            # outside a Keep folder, only accept files carrying Keep's own note markup
+            if not in_keep_folder and 'class="note"' not in html:
+                continue
+            got = keep_html_to_note(html)
+            if got:
+                parsed.append(got)
+        if not parsed:
+            for name, raw in txt_notes:
+                text = raw.decode("utf-8", "replace").strip()
+                if not text:
+                    continue
+                title = os.path.splitext(os.path.basename(name))[0][:60] or "keep note"
+                if looks_preformatted(text):
+                    text = "\n".join(escape_md_line(l) for l in text.split("\n"))
+                parsed.append((title, text, False))
+
+    if not parsed and not skipped:
+        raise ValueError("no google keep notes found in that file — make sure it's the "
+                         "Takeout .zip with Keep selected")
+
+    imported = 0
+    for title, body, pinned in parsed[:IMPORT_MAX_NOTES]:
+        note_id = secrets.token_hex(4)
+        try:
+            write_note(vault, note_id, title, body, [], parent_id, pinned)
+            imported += 1
+        except OSError as err:
+            errors.append("%s (%s)" % (title[:30], err))
+    return {
+        "imported": imported,
+        "skippedTrashed": skipped,
+        "tooMany": max(0, len(parsed) - IMPORT_MAX_NOTES),
+        "errors": errors[:5],
+    }
+
+
 SEED = """\
 # readme — how to use glyph
 
@@ -759,6 +1008,15 @@ outline · random note · copy link · duplicate · move note · check all
 to-dos · small text · narrow page · spellcheck · sort sidebar · trash ·
 export — if glyph can do it, it's in there.
 
+## coming from google keep?
+
+sidebar → **import from keep**. get your export from takeout.google.com
+(press "deselect all", tick only Keep, create the export, download the
+.zip google emails you), then pick that file. your notes, checklists —
+ticks included — labels, and pinned notes all come across into one
+"google keep" folder. keep's trash is skipped, and lined-up text keeps
+its spacing. copy-paste works too.
+
 ## your data is yours
 
 notes are plain markdown files. point Obsidian or Syncthing at your vault
@@ -800,7 +1058,12 @@ class Handler(BaseHTTPRequestHandler):
         except ValueError:
             return {}
 
-    def _reject_oversized(self):
+    def _read_raw(self):
+        """Raw bytes, for the archive upload — it isn't JSON."""
+        length = int(self.headers.get("Content-Length") or 0)
+        return self.rfile.read(length) if length else b""
+
+    def _reject_oversized(self, limit=None):
         """Checked before reading any request body — protocol_version defaults to HTTP/1.0
         here (one connection per request), so refusing without draining the body is fine,
         no keep-alive state to corrupt."""
@@ -808,8 +1071,8 @@ class Handler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length") or 0)
         except ValueError:
             length = 0
-        if length > MAX_BODY_SIZE:
-            self._json({"error": "request too large"}, 413)
+        if length > (limit or MAX_BODY_SIZE):
+            self._json({"error": "file too large"}, 413)
             return True
         return False
 
@@ -958,10 +1221,33 @@ class Handler(BaseHTTPRequestHandler):
         self._serve_static(path)
 
     def do_POST(self):
-        if self._reject_oversized():
-            return
         path = urlparse(self.path).path
         ip = self.client_address[0]
+
+        # the Keep import uploads an archive, so it gets its own (much larger) size ceiling —
+        # checked before the generic 2MB limit below would reject it
+        if path == "/api/import/keep":
+            user = self._current_user()
+            if not user:
+                return self._json({"error": "unauthorized"}, 401)
+            if self._reject_oversized(IMPORT_MAX_SIZE):
+                return
+            blob = self._read_raw()
+            if not blob:
+                return self._json({"error": "no file received"}, 400)
+            parent_id = parse_qs(urlparse(self.path).query).get("parent", [None])[0]
+            try:
+                summary = import_keep_archive(user_vault(user), blob, parent_id)
+            except (zipfile.BadZipFile, tarfile.TarError):
+                return self._json({"error": "that doesn't look like a Takeout .zip or .tgz"}, 400)
+            except ValueError as err:  # nothing Keep-shaped inside — tell them plainly
+                return self._json({"error": str(err)}, 400)
+            except Exception as err:  # noqa: BLE001 - report, don't 500 silently
+                return self._json({"error": "import failed: %s" % err}, 500)
+            return self._json(summary)
+
+        if self._reject_oversized():
+            return
 
         if path == "/api/auth/signup":
             if is_signup_locked(ip):

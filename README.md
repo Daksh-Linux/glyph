@@ -43,6 +43,13 @@ Every "note-taking app" I tried wanted to sync my thoughts to someone else's ser
 - **Daily note** — one command opens (or creates) today's planner, Obsidian-style
 - **To-do progress** — the status bar counts your checkboxes ("3/7 ✓"), plus check/uncheck-all commands
 
+### Coming from Google Keep
+- **One-click import** — feed it your Google Takeout `.zip` (or `.tgz`) and every Keep note becomes a real note
+- **Keeps the structure** — checklists become to-dos with their ticks intact, labels become `#tags`, pinned stays pinned, archived notes get an `#archived` tag
+- **Skips the noise** — notes in Keep's trash aren't imported, and the duplicate HTML copies Takeout ships are ignored
+- **Preserves alignment** — hand-made tables and column-aligned notes keep their exact spacing instead of being reflowed into lists
+- **Tidy landing** — everything arrives in one dated "google keep" folder you can unpack at your own pace
+
 ### Organizing & finding
 - **Full-text search** — `Ctrl/Cmd+K` searches *inside* every note, with a snippet showing why it matched
 - **Graph view** — see every note and the `[[links]]` between them, tap a dot to jump
