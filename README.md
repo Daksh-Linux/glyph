@@ -15,7 +15,11 @@ Every "note-taking app" I tried wanted to sync my thoughts to someone else's ser
 ### Writing
 - **Block editor** — Notion-style editing: headings (H1–H6), bullet/numbered lists, to-do checkboxes, quotes, callouts, code blocks, tables, collapsible toggles, dividers. Everything is still plain markdown underneath
 - **Slash menu** — type `/` at the start of a line to insert any block type, a callout, a calendar for the current month, or today's date
-- **Callouts** — Obsidian's `> [!note]` / `[!tip]` / `[!warning]` / `[!danger]` boxes, tap the icon to switch type
+- **Callouts** — Obsidian's `> [!note]` / `[!tip]` / `[!warning]` / `[!danger]` boxes, tap the icon to switch type, fold them with `[!note]-`
+- **Selection toolbar** — select text and a floating bold/italic/strike/code/highlight/link bar appears over it
+- **Drag to reorder** — grab the `⋮⋮` handle next to any block and drop it where it belongs (desktop)
+- **Emoji shortcodes** — `:fire:` → 🔥, `:idea:` → 💡, ~50 codes
+- **Soft line breaks** — `Shift+Enter` inside a paragraph or quote
 - **Markdown shortcuts** — type `# `, `- `, `1. `, `- [ ] `, `> `, `---`, `> [!tip] `, or ``` and the block converts as you type
 - **Inline formatting** — `**bold**`, `*italic*`, `~~strike~~`, `` `code` ``, `==highlight==`, `[links](https://...)`, bare URLs, and `#tags` (tap a tag to search it)
 - **Smart tables** — Tab/Enter move between cells like a spreadsheet, Enter on the last row adds one, sticky header row
@@ -32,6 +36,7 @@ Every "note-taking app" I tried wanted to sync my thoughts to someone else's ser
 
 ### Planning (templates)
 - **New note from a template** — tap + and pick: daily planner, weekly planner, monthly calendar (generated for the actual month), money planner, habit tracker, goal tracker, project tracker, reading list, meal planner, workout log, travel planner, study notes, weekly review
+- **Your own templates** — save any note as a template; it shows up in the + menu next to the built-ins
 - **Daily note** — one command opens (or creates) today's planner, Obsidian-style
 - **To-do progress** — the status bar counts your checkboxes ("3/7 ✓"), plus check/uncheck-all commands
 
@@ -42,7 +47,11 @@ Every "note-taking app" I tried wanted to sync my thoughts to someone else's ser
 - **Pin notes** — pinned notes stick to the top of the sidebar with a ★
 - **Move note into…** — nest any note under any other (or back to top level) without dragging
 - **Trash** — deleted notes are recoverable for 30 days, then purge automatically; "delete forever" if you're sure
+- **Unlinked mentions** — the backlinks panel also lists notes that mention this note's title without linking it
 - **Note info** — words, blocks, to-dos, reading time, last-updated, backlink count
+- **Vault stats** — total notes, words, to-dos, links, and ink across everything you have
+- **Random note** — Obsidian's serendipity button
+- **Sidebar sorting** — recency or A–Z, collapse/expand all folders, "edited 2h ago" tooltips
 - **Copy link to note** — a URL that reopens exactly that note on any of your devices
 
 ### Everything else
@@ -54,7 +63,9 @@ Every "note-taking app" I tried wanted to sync my thoughts to someone else's ser
 - **Reopens where you left off** — the last note you viewed comes back after a reload
 - **Local files** — open and edit a real file from your disk, or pull it into your vault as a note
 - **Export** — download any note as `.md`, the whole vault as a `.zip`, or duplicate a note (ink included)
-- **Layout preferences** — small text, centered narrow page, spellcheck on/off — each remembered per device
+- **Layout preferences** — small text, centered narrow page, spellcheck on/off — each remembered per device (pen color and sizes too)
+- **Zen mode** — hide every bar and panel, just you and the note (Esc leaves)
+- **Print / save as PDF** — a clean black-on-white print layout, straight from the palette
 - **PWA** — installable on iOS/Android/desktop, works offline
 - **Self-service account deletion** — delete your account and every note in it yourself, no need to ask
 - **Plain-language [privacy & terms](https://glyph.dakshhq.com/legal)** — written by the person who runs it, not a lawyer

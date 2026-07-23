@@ -315,13 +315,15 @@ def find_path(vault, note_id):
 
 
 def backlinks(vault, note_id):
-    """Every note whose body links [[to the title of note_id]]. Resolution is
-    by title, same as Obsidian — a rename breaks incoming links, same as there."""
+    """Two kinds of incoming references, Obsidian-style:
+    - linked: notes whose body has a real [[link]] to this note's title
+    - mentions: notes whose body contains the title as plain text but never
+      linked it (skipped for very short titles — they'd match everything)."""
     target_path = find_path(vault, note_id)
     if not target_path:
-        return []
+        return {"linked": [], "mentions": []}
     target_title = os.path.basename(target_path)[:-3].lower()
-    out = []
+    linked, mentions = [], []
     for path in md_files(vault):
         if path == target_path:
             continue
@@ -331,8 +333,10 @@ def backlinks(vault, note_id):
             continue
         titles = {t.lower() for t in extract_links(note["body"])}
         if target_title in titles:
-            out.append({"id": note["id"], "title": note["title"]})
-    return out
+            linked.append({"id": note["id"], "title": note["title"]})
+        elif len(target_title) >= 4 and target_title in note["body"].lower():
+            mentions.append({"id": note["id"], "title": note["title"]})
+    return {"linked": linked, "mentions": mentions}
 
 
 def unique_name(vault, title, note_id):
@@ -420,6 +424,27 @@ def graph_data(vault):
             if tid and tid != m["id"]:
                 links.append({"source": m["id"], "target": tid})
     return {"nodes": metas, "links": links}
+
+
+def vault_stats(vault):
+    """Whole-vault numbers for the stats modal — notes, words, to-dos, ink, links."""
+    notes = words = todos_total = todos_done = ink = links = 0
+    for path in md_files(vault):
+        try:
+            note = parse(path, vault)
+        except OSError:
+            continue
+        notes += 1
+        body = note["body"]
+        words += len(body.split())
+        todos_total += len(re.findall(r"^\s*- \[[ xX]\]", body, re.M))
+        todos_done += len(re.findall(r"^\s*- \[[xX]\]", body, re.M))
+        links += len(extract_links(body))
+        if os.path.exists(sidecar(vault, note["id"])):
+            ink += 1
+    return {"notes": notes, "words": words, "todosTotal": todos_total,
+            "todosDone": todos_done, "ink": ink, "links": links,
+            "trash": len(trash_files(vault))}
 
 
 def export_zip(vault):
@@ -618,80 +643,64 @@ def purge_note(vault, note_id):
 SEED = """\
 # readme
 
-a terminal you can write in. plain text on the left, apple pencil on the right.
+welcome to glyph — a notebook that's plain markdown underneath, drawable on
+top, and lives in your own private vault. this note is your tour; edit or
+delete it any time, it's just a note.
 
-## new version out
-
-a lot has been added since this note was first written — block editor,
-wiki-links, search, nested notes, and more. it's all below.
-
-> [!tip] the fastest way in
-> type `/` at the start of any line for the block menu, tap the + button
-> for templates (planners, trackers, calendars), and search anything with
-> Ctrl/Cmd-K — it looks inside every note, not just at titles.
-
-## modes
-
-- NORMAL  browse notes / run keys
-- INSERT  type markdown        (key: i)
-- DRAW    sketch with a pencil (key: d)
-- new note                     (key: o)
-- back to NORMAL               (key: esc)
+> [!tip] the three things worth learning first
+> type `/` at the start of any line for the block menu · tap **+** for
+> templates · press Ctrl/Cmd-K to search inside every note you have
 
 ## writing
 
-type markdown shortcuts and they turn into real formatting as you go:
+type markdown and it becomes real formatting as you go:
 
-- `# ` `## ` `### `  headings
-- `- `                bullet list
-- `1. `               numbered list
-- `- [ ] `            checkbox / to-do
-- `> `                quote
-- three backticks     code block
+- `# ` through `###### `  headings
+- `- ` bullets · `1. ` numbered · `- [ ] ` to-dos
+- `> ` quote · `> [!tip] ` callout · `---` divider
+- three backticks for a code block (language label + copy button included)
 
-select some text and press Cmd/Ctrl-B, -I, or -Shift-X for **bold**, *italic*,
-or ~~strikethrough~~. use the search bar (or Cmd/Ctrl-K) to insert a table,
-a toggle, or a divider — type "insert" to find them.
+- [ ] this is a to-do — the status bar down there is counting it
+- [ ] tables move like a spreadsheet: Tab next cell, Enter next row
 
-## linking notes together
+select text for the floating **bold** / *italic* / ==highlight== toolbar,
+or use the bar above the keyboard on a phone or tablet. paste a URL over
+selected text and it becomes a link. emoji shortcodes work too — type
+`:fire:` and get 🔥.
 
-type `[[` to link to another note — pick it from the popup as you go.
-click a link to jump straight there. any note that has links pointing to it
-shows "N notes link here" at the bottom, so you can find your way back.
+undo is real everywhere: Ctrl/Cmd-Z for text, same keys for pen strokes
+in draw mode. deleted notes wait in trash for 30 days.
 
-## nested notes
+## drawing
 
-click the + on a note in the sidebar to add a note inside it. notes with
-children get a ▸ arrow — click it to open them right there in the list,
-underneath their parent. the bar up top shows exactly where you are, e.g.
-Project X ❯ Sub note.
+touch the page with an apple pencil and you're drawing — same page as your
+text, no separate screen. fingers still scroll. pens, a marker, an eraser
+and undo/redo live in the toolbar; tap done to go back to typing.
 
-## search
+## linking & finding
 
-click the search bar up top (or Cmd/Ctrl-K) to jump to any note or run a
-command — new note, switch theme, delete account, and more. your most
-recent notes show up first; type to filter everything.
+- type `[[` to link to another note — backlinks and unlinked mentions
+  show up at the bottom of the note they point to
+- `#tags` are tappable — one tap searches the tag everywhere
+- graph view (in the palette) draws every note and link as a map
+- pin notes to the top, nest notes inside notes, drag blocks to reorder
 
-## draw mode
+## planners & templates
 
-sketch with Apple Pencil — pick a pen size and color, use the eraser, undo,
-or clear. "pen-only" is on by default so a palm resting on the screen while
-you write never draws, scrolls, or selects anything by accident.
+tap **+** and pick a template: daily planner, weekly planner, money
+planner, habit tracker, monthly calendar, project tracker, travel planner
+and more — or save any note of yours as a template ("save note as
+template" in the palette).
 
-## local files
+## your data is yours
 
-open a file from this device (works in every browser) with "open file" in
-the sidebar, edit it, and save it back — in place if your browser allows it
-(Chrome/Brave/Edge), or as a downloaded copy otherwise (Safari/Firefox).
-"sync to glyph" turns it into a real note in your vault any time.
+notes are plain markdown files. point Obsidian or Syncthing at your vault
+folder and everything opens there too. download any note as .md — or your
+whole vault as a .zip — from the palette, whenever you want. no lock-in,
+no analytics, no third parties.
 
-## sync
-
-these notes are plain markdown files in your vault, so they open in
-Obsidian on every device the folder is synced to. sketches are saved
-next to them under .glyph/ and stay editable back here in glyph.
-
-start typing, or hit  d  to draw.
+press ? for every keyboard shortcut. start typing, or just touch the page
+with a pencil.
 """
 
 
@@ -858,6 +867,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(list_trash(user_vault(user)))
         if path == "/api/graph":
             return self._json(graph_data(user_vault(user)))
+        if path == "/api/stats":
+            return self._json(vault_stats(user_vault(user)))
         if path == "/api/export.zip":
             data = export_zip(user_vault(user))
             self.send_response(200)

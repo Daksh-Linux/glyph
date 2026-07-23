@@ -299,6 +299,37 @@ svg{display:block}
   cursor:pointer; display:block; margin-top:10px;}
 .row .pin{color:var(--yellow); font-size:11px; flex:0 0 auto;}
 
+/* floating selection toolbar — appears over selected text, like Notion's */
+.seltoolbar{position:fixed; z-index:35; display:flex; gap:2px; background:var(--ink);
+  border:1px solid var(--line); border-radius:8px; padding:3px; box-shadow:0 6px 20px rgba(0,0,0,.4);}
+.seltoolbar button{min-width:30px; height:28px; padding:0 7px; border-radius:5px; color:var(--dim); font-size:13px;}
+.seltoolbar button:hover{color:var(--text); background:var(--panel);}
+
+/* drag handle — one floating ⋮⋮ that follows the hovered block; drag it to reorder */
+.drag-handle{position:absolute; width:18px; height:22px; display:flex; align-items:center; justify-content:center;
+  color:var(--faint); cursor:grab; z-index:6; user-select:none; font-size:13px; letter-spacing:-2px;}
+.drag-handle:hover{color:var(--dim);}
+@media (hover:none){.drag-handle{display:none}} /* touch devices use the ↑↓ toolbar buttons instead */
+.drop-before{box-shadow:0 -2px 0 0 var(--blue);}
+.drop-after{box-shadow:0 2px 0 0 var(--blue);}
+
+/* callout fold */
+.callout-fold{flex:0 0 auto; border:none; background:none; color:var(--dim); cursor:pointer;
+  font-size:10px; padding:2px 4px; border-radius:3px;}
+.callout-fold:hover{color:var(--text); background:var(--panel);}
+.callout.folded .callout-body{display:none;}
+
+/* zen mode — nothing but the note */
+body.zen .bar, body.zen .status, body.zen .kbar, body.zen .side, body.zen .backlinks{display:none!important;}
+
+/* print / save-as-pdf: just the note content, black on white */
+@media print{
+  .bar, .status, .kbar, .side, .scrim, .backlinks, .drawbar, .ink, .drag-handle, .seltoolbar{display:none!important;}
+  .app, .body, .main, .note-scroll{position:static!important; overflow:visible!important; display:block!important;}
+  #blockEditor{padding:0!important; max-width:none!important;}
+  body{background:#fff; color:#000;}
+}
+
 /* keyboard-shortcuts help modal */
 .modal.wide{max-width:440px; max-height:80vh; overflow-y:auto}
 .sc-row{display:flex; justify-content:space-between; gap:14px; font-size:12.5px; padding:4px 0; border-bottom:1px solid var(--line2)}
@@ -492,7 +523,7 @@ function currentTheme() { return document.documentElement.getAttribute("data-the
 /* ---- state ---- */
 let notes = [];        // [{id,title,updated,hasInk,parent}]
 let activeId = null;
-let backlinksData = []; // [{id,title}] — notes that [[link]] to the currently open note
+let backlinksData = { linked: [], mentions: [] }; // notes that [[link]] here / mention the title as plain text
 let backlinksCollapsed = false;
 let expanded = new Set(); // note IDs whose children are shown inline (indented underneath) in the sidebar
 let active = null;     // full note {id,title,body,strokes,updated}
@@ -500,7 +531,11 @@ let mode = "normal";   // normal | insert | draw
 // pen-only defaults to true (not false) — palm-rejection needs to be active from the very first
 // touch in the session, before the pencil has ever touched the glass, otherwise a palm set down
 // before the pencil arrives draws/scrolls/clicks like any other touch. Persisted per device like theme.
-let penIdx = 1, sizeIdx = 1, eraserSizeIdx = 1, penOnly = readPenOnly(), penSeen = false, erasing = false; // erasing = are we in eraser mode right now
+// pen colour/sizes persist per device (like theme/penOnly) — pick your pen once
+function readIdx(key, dflt, max) { try { const v = parseInt(localStorage.getItem("glyph:" + key), 10); return v >= 0 && v <= max ? v : dflt; } catch (e) { return dflt; } }
+function setIdx(key, v) { try { localStorage.setItem("glyph:" + key, String(v)); } catch (e) {} }
+let penIdx = readIdx("penIdx", 1, 5), sizeIdx = readIdx("sizeIdx", 1, 2), eraserSizeIdx = readIdx("eraserIdx", 1, 2),
+  penOnly = readPenOnly(), penSeen = false, erasing = false; // erasing = are we in eraser mode right now
 function readPenOnly() { try { return localStorage.getItem("glyph:penOnly") !== "0"; } catch (e) { return true; } }
 function setPenOnly(v) { penOnly = v; try { localStorage.setItem("glyph:penOnly", v ? "1" : "0"); } catch (e) {} }
 let saveStatus = "saved";
@@ -659,7 +694,7 @@ async function openNote(id) {
   }
   activeId = active.id;
   if (mode === "draw") mode = "normal";
-  backlinksData = [];
+  backlinksData = { linked: [], mentions: [] };
   resetHistory(); // undo history is per-note — never undo note A's edits into note B
   LC.set("glyph:" + ME + ":last", active.id); // remembered across reloads (see boot)
   // keep the URL pointing at this note so refresh/share-to-self lands back here
@@ -672,7 +707,9 @@ async function loadBacklinks(id) {
   try {
     const result = await api("GET", "/api/notes/" + encodeURIComponent(id) + "/backlinks");
     if (activeId !== id) return; // note switched again before this resolved
-    backlinksData = result || [];
+    // the endpoint used to return a plain array (just linked notes) — accept both shapes
+    // so a client talking to an older server doesn't break mid-deploy
+    backlinksData = Array.isArray(result) ? { linked: result, mentions: [] } : (result || { linked: [], mentions: [] });
     renderBacklinksPanel();
   } catch (e) { /* offline or server error — panel just stays empty, not worth surfacing */ }
 }
@@ -680,15 +717,19 @@ async function loadBacklinks(id) {
 function renderBacklinksPanel() {
   const el = $("#backlinksPanel");
   if (!el) return;
-  if (!backlinksData.length) { el.hidden = true; return; }
+  const linked = backlinksData.linked || [], mentions = backlinksData.mentions || [];
+  if (!linked.length && !mentions.length) { el.hidden = true; return; }
   el.hidden = false;
   el.classList.toggle("collapsed", backlinksCollapsed);
+  const parts = [];
+  if (linked.length) parts.push(linked.length + (linked.length === 1 ? " note links here" : " notes link here"));
+  if (mentions.length) parts.push(mentions.length + (mentions.length === 1 ? " mention" : " mentions"));
   el.innerHTML =
-    '<div class="backlinks-head" id="backlinksHead"><span class="tri">▾</span>' +
-      backlinksData.length + (backlinksData.length === 1 ? " note links here" : " notes link here") +
-    "</div>" +
+    '<div class="backlinks-head" id="backlinksHead"><span class="tri">▾</span>' + parts.join(" · ") + "</div>" +
     '<ul class="backlinks-list">' +
-      backlinksData.map((n) => '<li data-id="' + esc(n.id) + '">' + esc(n.title) + "</li>").join("") +
+      linked.map((n) => '<li data-id="' + esc(n.id) + '">' + esc(n.title) + "</li>").join("") +
+      // mentions are dimmer — they reference this note's title without a real [[link]]
+      mentions.map((n) => '<li data-id="' + esc(n.id) + '" style="opacity:.55" title="mentions the title without linking">' + esc(n.title) + "</li>").join("") +
     "</ul>";
   $("#backlinksHead").onclick = () => { backlinksCollapsed = !backlinksCollapsed; renderBacklinksPanel(); };
   el.querySelectorAll(".backlinks-list li").forEach((li) => {
@@ -866,12 +907,58 @@ async function openDailyNote() {
   await newNote(null, { name: title, body: TEMPLATES[0].body });
 }
 
+/* ---- custom templates — save any of your notes as a reusable template ---- */
+function myTemplates() { return LC.get("glyph:" + ME + ":mytpl") || []; }
+
+function saveNoteAsTemplate() {
+  if (!active) return;
+  const name = prompt("template name:", active.title || "my template");
+  if (!name) return;
+  const list = myTemplates().filter((t) => t.name !== name); // same name overwrites
+  list.push({ name, body: active.body });
+  LC.set("glyph:" + ME + ":mytpl", list);
+}
+
+function removeMyTemplate(name) {
+  LC.set("glyph:" + ME + ":mytpl", myTemplates().filter((t) => t.name !== name));
+}
+
+/* ---- zen mode — nothing on screen but the note (Esc leaves) ---- */
+let zenOn = false;
+function toggleZen() {
+  zenOn = !zenOn;
+  document.body.classList.toggle("zen", zenOn);
+}
+
+/* ---- vault stats (server-computed across every note) ---- */
+async function openVaultStatsModal() {
+  let s = null;
+  try { s = await api("GET", "/api/stats"); } catch (e) {}
+  if (!s) { alert("stats need the server — you look offline"); return; }
+  const rows = [
+    ["notes", String(s.notes)],
+    ["total words", s.words.toLocaleString()],
+    ["to-dos", s.todosTotal ? s.todosDone + " / " + s.todosTotal + " done" : "none"],
+    ["notes with ink", String(s.ink)],
+    ["[[links]]", String(s.links)],
+    ["in trash", String(s.trash)],
+  ];
+  const scrim = $("#modalScrim");
+  scrim.innerHTML =
+    '<div class="modal wide"><h2 style="color:var(--blue)">vault stats</h2>' +
+    rows.map((r) => '<div class="sc-row"><span>' + esc(r[0]) + '</span><kbd>' + esc(r[1]) + '</kbd></div>').join("") +
+    '</div>';
+  scrim.hidden = false;
+  scrim.onclick = (e) => { if (e.target === scrim) closeModal(); };
+}
+
 /* ---- per-device editor preferences (small text / page width / spellcheck) ---- */
 function readPref(key, dflt) { try { const v = localStorage.getItem("glyph:" + key); return v === null ? dflt : v === "1"; } catch (e) { return dflt; } }
 function setPref(key, v) { try { localStorage.setItem("glyph:" + key, v ? "1" : "0"); } catch (e) {} }
 let smallText = readPref("smallText", false);
 let narrowPage = readPref("narrowPage", false);
 let spellcheckOn = readPref("spellcheck", false);
+let sidebarAZ = readPref("sidebarAZ", false); // sidebar sort: recency (default) or alphabetical
 
 function applyEditorPrefs() {
   const host = $("#blockEditor");
@@ -1110,8 +1197,12 @@ function buildTree(notesList) {
     if (n.parent && byId[n.parent] && !isDescendantOf(byId, n.id, n.parent)) byId[n.parent].children.push(byId[n.id]);
     else roots.push(byId[n.id]);
   });
-  // pinned notes float to the top of their level (★), most-recent first within each group
-  const sortFn = arr => { arr.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.updated - a.updated); arr.forEach(n => sortFn(n.children)); };
+  // pinned notes float to the top of their level (★); below them: recency or A-Z per preference
+  const sortFn = arr => {
+    arr.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) ||
+      (sidebarAZ ? (a.title || "").localeCompare(b.title || "") : b.updated - a.updated));
+    arr.forEach(n => sortFn(n.children));
+  };
   sortFn(roots);
   return roots;
 }
@@ -1138,7 +1229,7 @@ function renderTreeNodes(nodesArr, depth) {
       ? '<button class="tree-tog" data-tog="' + esc(n.id) + '">' + (isOpen ? "▾" : "▸") + "</button>"
       : '<span class="tree-leaf"></span>';
     return (
-      '<li class="row' + (sel ? " sel" : "") + '" data-id="' + esc(n.id) + '" style="padding-left:' + pl + 'px">' +
+      '<li class="row' + (sel ? " sel" : "") + '" data-id="' + esc(n.id) + '" title="edited ' + relTime(n.updated) + '" style="padding-left:' + pl + 'px">' +
         toggle +
         '<span class="name">' + esc(n.title || "untitled") + "</span>" +
         (n.pinned ? '<span class="pin" title="pinned">★</span>' : "") +
@@ -1149,6 +1240,16 @@ function renderTreeNodes(nodesArr, depth) {
       (hasKids && isOpen ? renderTreeNodes(n.children, depth + 1) : "")
     );
   }).join("");
+}
+
+// "edited 5m ago" for sidebar tooltips — note timestamps are unix seconds
+function relTime(ts) {
+  const s = Math.max(0, Math.floor(Date.now() / 1000 - (ts || 0)));
+  if (s < 60) return "just now";
+  const m = Math.floor(s / 60); if (m < 60) return m + "m ago";
+  const h = Math.floor(m / 60); if (h < 24) return h + "h ago";
+  const d = Math.floor(h / 24); if (d < 30) return d + "d ago";
+  return Math.floor(d / 30) + "mo ago";
 }
 
 function toggleExpand(id) {
@@ -1257,6 +1358,7 @@ function openDeleteAccountModal() {
 // "new note" now asks what kind — blank, or any template. Tapping + used to silently
 // make a blank note, which meant nobody ever found the templates.
 function openNewNoteMenu(parentId) {
+  const custom = myTemplates();
   const scrim = $("#modalScrim");
   scrim.innerHTML =
     '<div class="modal wide"><h2 style="color:var(--blue)">new note</h2>' +
@@ -1264,7 +1366,11 @@ function openNewNoteMenu(parentId) {
       '<li data-tpl="-1"><span class="kind">blank</span><span class="grow">empty note</span></li>' +
       TEMPLATES.map((t, i) =>
         '<li data-tpl="' + i + '"><span class="kind">tpl</span><span class="grow">' + esc(t.name) + '</span></li>').join("") +
-    '</ul></div>';
+      custom.map((t, i) =>
+        '<li data-mytpl="' + i + '"><span class="kind">yours</span><span class="grow">' + esc(t.name) + '</span>' +
+        '<button class="danger" data-rmtpl="' + i + '" title="remove this template">×</button></li>').join("") +
+    '</ul>' +
+    '<div class="hint">save any note as a template via the palette — "save note as template"</div></div>';
   scrim.hidden = false;
   scrim.onclick = (e) => { if (e.target === scrim) closeModal(); };
   scrim.querySelectorAll("[data-tpl]").forEach((li) => {
@@ -1272,6 +1378,16 @@ function openNewNoteMenu(parentId) {
       const i = +li.getAttribute("data-tpl");
       closeModal();
       newNote(parentId || null, i >= 0 ? TEMPLATES[i] : undefined);
+    };
+  });
+  scrim.querySelectorAll("[data-mytpl]").forEach((li) => {
+    li.onclick = () => { closeModal(); newNote(parentId || null, custom[+li.getAttribute("data-mytpl")]); };
+  });
+  scrim.querySelectorAll("[data-rmtpl]").forEach((btn) => {
+    btn.onclick = (e) => {
+      e.stopPropagation(); // the row click underneath would create a note from it
+      removeMyTemplate(custom[+btn.getAttribute("data-rmtpl")].name);
+      openNewNoteMenu(parentId);
     };
   });
 }
@@ -1314,7 +1430,7 @@ function openNoteInfoModal() {
     ["reading time", "~" + Math.max(1, Math.round(words / 200)) + " min"],
     ["ink strokes", String((active.strokes || []).length)],
     ["last updated", new Date((active.updated || 0) * 1000).toLocaleString()],
-    ["links here", String(backlinksData.length)],
+    ["links here", String((backlinksData.linked || []).length)],
     ["pinned", active.pinned ? "yes" : "no"],
   ];
   const scrim = $("#modalScrim");
@@ -1505,11 +1621,21 @@ function paletteItemGroups() {
     { kind: "action", label: "move note into…", run: () => openMoveNoteModal() },
     { kind: "action", label: "trash (deleted notes)", run: () => openTrashModal() },
     { kind: "action", label: "copy link to note", run: () => copyNoteLink() },
+    { kind: "action", label: "copy note as markdown", run: async () => { if (active) try { await navigator.clipboard.writeText(active.body); } catch (e) {} } },
+    { kind: "action", label: "random note", run: () => { if (notes.length) openNote(notes[Math.floor(Math.random() * notes.length)].id); } },
+    { kind: "action", label: "vault stats", run: () => openVaultStatsModal() },
+    { kind: "action", label: zenOn ? "leave zen mode" : "zen mode (hide everything)", run: () => toggleZen() },
+    { kind: "action", label: "print / save as PDF", run: () => window.print() },
+    { kind: "action", label: "save note as template", run: () => saveNoteAsTemplate() },
     { kind: "action", label: "undo", run: () => doUndo() },
     { kind: "action", label: "redo", run: () => doRedo() },
     { kind: "action", label: "duplicate current note", run: () => duplicateNote() },
     { kind: "action", label: "check all to-dos", run: () => setAllTodos(true) },
     { kind: "action", label: "uncheck all to-dos", run: () => setAllTodos(false) },
+    { kind: "action", label: "collapse all folders", run: () => { expanded = new Set(); renderList(); } },
+    { kind: "action", label: "expand all folders", run: () => { notes.forEach((n) => { if (n.parent) expanded.add(n.parent); }); renderList(); } },
+    { kind: "action", label: sidebarAZ ? "sort sidebar by recent" : "sort sidebar a-z",
+      run: () => { sidebarAZ = !sidebarAZ; setPref("sidebarAZ", sidebarAZ); renderList(); } },
     { kind: "action", label: "download note as .md", run: () => downloadNoteMd() },
     { kind: "action", label: "download all notes (.zip)", run: () => { location.href = "/api/export.zip"; } },
     { kind: "action", label: smallText ? "normal text size" : "small text size",
@@ -1532,8 +1658,9 @@ function paletteItemGroups() {
     { kind: "danger", label: "delete current note", run: () => { if (active) removeNote(active.id); } },
     { kind: "danger", label: "log out", run: () => logout() },
   ];
-  // every template as a searchable "new X" entry — typing "money" finds "new money planner"
-  const templateItems = TEMPLATES.map((t) => ({ kind: "tpl", label: "new " + t.name, run: () => newNote(null, t) }));
+  // every template (built-in + your saved ones) as a searchable "new X" entry
+  const templateItems = TEMPLATES.concat(myTemplates())
+    .map((t) => ({ kind: "tpl", label: "new " + t.name, run: () => newNote(null, t) }));
   return { noteItems, actionItems, templateItems };
 }
 
@@ -1878,12 +2005,13 @@ function parseBlocks(md) {
       while (i < lines.length && /^>\s?/.test(lines[i])) { qlines.push(lines[i].replace(/^>\s?/, "")); i++; }
       // Obsidian callout: first quoted line is "[!kind] optional title", rest is the body.
       // Anything not shaped like that stays a plain quote.
-      const cm = qlines[0] && qlines[0].match(/^\[!(\w+)\]\s*(.*)$/);
+      const cm = qlines[0] && qlines[0].match(/^\[!(\w+)\](-?)\s*(.*)$/);
       if (cm) {
         const kind = cm[1].toLowerCase();
         out.push({ id: uid(), type: "callout",
           kind: ["note", "tip", "warning", "danger"].includes(kind) ? kind : "note",
-          text: cm[2] || "", body: qlines.slice(1).join("\n") });
+          fold: cm[2] === "-", // Obsidian's collapsed-callout marker: > [!note]-
+          text: cm[3] || "", body: qlines.slice(1).join("\n") });
       } else {
         out.push({ id: uid(), type: "quote", text: qlines.join("\n") });
       }
@@ -1914,7 +2042,7 @@ function serializeBlocks(list) {
       case "quote": return b.text.split("\n").map((l) => "> " + l).join("\n");
       case "callout": {
         // serializes to Obsidian's exact callout syntax, so it renders natively there too
-        const head = "> [!" + (b.kind || "note") + "]" + (b.text ? " " + b.text : "");
+        const head = "> [!" + (b.kind || "note") + "]" + (b.fold ? "-" : "") + (b.text ? " " + b.text : "");
         const body = (b.body || "").split("\n").map((l) => "> " + l).join("\n");
         return b.body ? head + "\n" + body : head;
       }
@@ -2111,6 +2239,21 @@ function renderInlineInto(el, text) {
   if (lastIndex < text.length) el.appendChild(document.createTextNode(text.slice(lastIndex)));
 }
 
+/* ---- emoji shortcodes — type :fire: and get 🔥 the moment the closing : lands ---- */
+const EMOJI = {
+  smile: "😄", joy: "😂", cry: "😢", sad: "😞", angry: "😠", cool: "😎", wink: "😉",
+  thinking: "🤔", eyes: "👀", sleep: "😴", heart: "❤️", fire: "🔥", star: "⭐",
+  check: "✅", x: "❌", warning: "⚠️", idea: "💡", bulb: "💡", rocket: "🚀",
+  tada: "🎉", clap: "👏", thumbsup: "👍", thumbsdown: "👎", pray: "🙏", muscle: "💪",
+  brain: "🧠", "100": "💯", book: "📖", pin: "📌", calendar: "📅", clock: "⏰",
+  money: "💰", coffee: "☕", food: "🍜", home: "🏠", work: "💼", laptop: "💻",
+  phone: "📱", camera: "📷", music: "🎵", gift: "🎁", target: "🎯", zap: "⚡",
+  sun: "☀️", moon: "🌙", rain: "🌧️", car: "🚗", plane: "✈️", train: "🚆", run: "🏃",
+};
+function replaceEmojiShortcodes(text) {
+  return (text || "").replace(/:([a-z0-9_+]+):/g, (m, code) => EMOJI[code] || m);
+}
+
 // Cmd/Ctrl+B/I/Shift+X — wrap the current selection in markdown syntax. No-ops on a
 // collapsed selection (v1 keeps this simple: select text first, then format it).
 function wrapSelectionWith(b, el, wrap) {
@@ -2203,11 +2346,20 @@ function renderBlockEl(b) {
   if (b.type === "callout") {
     const CALLOUT_ICONS = { note: "✎", tip: "☀", warning: "⚠", danger: "⛔" };
     const box = document.createElement("div");
-    box.className = "block callout callout-" + (b.kind || "note");
+    box.className = "block callout callout-" + (b.kind || "note") + (b.fold ? " folded" : "");
     box.dataset.id = b.id;
 
     const head = document.createElement("div");
     head.className = "callout-head";
+
+    // fold arrow — collapses the body, saved as Obsidian's [!kind]- so it round-trips
+    const fold = document.createElement("button");
+    fold.type = "button"; fold.className = "callout-fold";
+    fold.textContent = b.fold ? "▸" : "▾";
+    fold.title = b.fold ? "expand" : "collapse";
+    fold.addEventListener("mousedown", (e) => e.preventDefault());
+    fold.onclick = () => { b.fold = !b.fold; syncBody(); renderEditorBlocks(); };
+    head.appendChild(fold);
     const icon = document.createElement("span");
     icon.className = "callout-icon";
     icon.textContent = CALLOUT_ICONS[b.kind] || CALLOUT_ICONS.note;
@@ -2387,8 +2539,21 @@ function renderBlockEl(b) {
   renderInlineInto(textEl, b.text || ""); // rendered (clickable links, bold/italic) until focused
   textEl.setAttribute("data-placeholder", blockPlaceholder(b));
 
-  textEl.addEventListener("input", () => {
+  textEl.addEventListener("input", (ev) => {
     b.text = textEl.textContent;
+    // a just-typed ":" may have closed an emoji shortcode — swap it in place, keep the caret
+    if (ev && ev.data === ":") {
+      const caret = getCaretOffset(textEl);
+      const beforeCaret = b.text.slice(0, caret);
+      const replaced = replaceEmojiShortcodes(beforeCaret);
+      if (replaced !== beforeCaret) {
+        b.text = replaced + b.text.slice(caret);
+        textEl.textContent = b.text;
+        setCaretOffset(textEl, replaced.length);
+        syncBody();
+        return;
+      }
+    }
     if (applyTypeTrigger(b)) {
       syncBody(); renderEditorBlocks();
       if (b.type === "hr") {
@@ -2462,8 +2627,8 @@ function renderBlockEl(b) {
       if (e.key === "ArrowUp") { e.preventDefault(); e.stopPropagation(); wikiSel = Math.max(wikiSel - 1, 0); renderWikiPopupCE(); return; }
       if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); e.stopPropagation(); insertWikiLinkCE(wikiSel); return; }
     }
-    if ((e.metaKey || e.ctrlKey) && (e.key === "b" || e.key === "i" || (e.shiftKey && e.key.toLowerCase() === "x"))) {
-      const wrap = e.key === "b" ? "**" : e.key === "i" ? "*" : "~~";
+    if ((e.metaKey || e.ctrlKey) && (e.key === "b" || e.key === "i" || (e.shiftKey && ["x", "h"].includes(e.key.toLowerCase())))) {
+      const wrap = e.key === "b" ? "**" : e.key === "i" ? "*" : e.key.toLowerCase() === "x" ? "~~" : "==";
       e.preventDefault();
       wrapSelectionWith(b, textEl, wrap);
       return;
@@ -2774,6 +2939,17 @@ function handleBlockKeydown(e, b, el) {
     }
   }
 
+  if (e.key === "Enter" && e.shiftKey && (b.type === "p" || b.type === "quote")) {
+    // soft line break inside the same block — done via b.text (not the browser's default,
+    // which inserts a <br> that .textContent silently drops on the next read)
+    e.preventDefault();
+    const pos = getCaretOffset(el);
+    const t = b.text || "";
+    b.text = t.slice(0, pos) + "\n" + t.slice(pos);
+    syncBody(); renderEditorBlocks(); focusBlock(b.id, pos + 1);
+    return;
+  }
+
   if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
     const pos = getCaretOffset(el);
@@ -3023,6 +3199,7 @@ function renderMain() {
     applyEditorPrefs();
     buildKbar();
     buildDrawControls();
+    setupBlockDrag();
     // pointer handlers live on the scroller permanently, in every mode — down() decides what a
     // pointer means: pen in text mode flips to draw and starts the stroke, fingers scroll, etc.
     const scroll = $("#noteScroll");
@@ -3143,6 +3320,7 @@ const KBAR_ITEMS = [
   { t: "<b>B</b>", title: "bold (select text first) — Ctrl+B", run: () => kbarWrap("**") },
   { t: "<i>I</i>", title: "italic — Ctrl+I", run: () => kbarWrap("*") },
   { t: "<s>S</s>", title: "strikethrough — Ctrl+Shift+X", run: () => kbarWrap("~~") },
+  { t: "==", title: "highlight — Ctrl+Shift+H", run: () => kbarWrap("==") },
   { t: "`", title: "inline code", run: () => kbarWrap("`") },
   { t: "[[", title: "link to another note", run: () => kbarInsertWiki() },
   { div: true },
@@ -3189,6 +3367,135 @@ function kbarInsertWiki() {
   const wrapEl = host && host.querySelector('[data-id="' + b.id + '"]');
   const el = wrapEl && (wrapEl.matches("[contenteditable]") ? wrapEl : wrapEl.querySelector("[contenteditable]"));
   if (el) checkWikiTriggerCE(el, b);
+}
+
+/* ---- floating selection toolbar ----
+   Select text in any block and a mini B/I/S/code/highlight/link bar appears right above
+   the selection (Notion's signature). Rebuilt on every selection change — no stale
+   closures over old blocks — and hidden the moment the selection collapses. */
+let selTbTimer = null;
+document.addEventListener("selectionchange", () => {
+  clearTimeout(selTbTimer);
+  selTbTimer = setTimeout(updateSelToolbar, 120);
+});
+document.addEventListener("scroll", () => { const t = $("#selToolbar"); if (t) t.remove(); }, true);
+
+function updateSelToolbar() {
+  const old = $("#selToolbar");
+  if (old) old.remove();
+  const host = $("#blockEditor");
+  const sel = window.getSelection();
+  if (!host || !sel.rangeCount || sel.isCollapsed || mode === "draw") return;
+  const range = sel.getRangeAt(0);
+  const node = range.commonAncestorContainer;
+  const el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+  if (!el || !host.contains(el)) return;
+  const editable = el.closest("[contenteditable]");
+  if (!editable || el.closest(".block-table")) return; // table cells: wrapping syntax there is rarely wanted
+  const wrapEl = el.closest("[data-id]");
+  const b = wrapEl && blocks.find((x) => x.id === wrapEl.dataset.id);
+  if (!b || !TEXT_TYPES.has(b.type)) return;
+  const rect = range.getBoundingClientRect();
+  if (!rect.width && !rect.height) return;
+
+  const bar = document.createElement("div");
+  bar.id = "selToolbar";
+  bar.className = "seltoolbar";
+  const items = [
+    ["<b>B</b>", "bold", () => wrapSelectionWith(b, editable, "**")],
+    ["<i>I</i>", "italic", () => wrapSelectionWith(b, editable, "*")],
+    ["<s>S</s>", "strikethrough", () => wrapSelectionWith(b, editable, "~~")],
+    ["`", "inline code", () => wrapSelectionWith(b, editable, "`")],
+    ["==", "highlight", () => wrapSelectionWith(b, editable, "==")],
+    ["[[", "make this a note link", () => wrapSelectionAsym(b, editable, "[[", "]]")],
+  ];
+  items.forEach(([label, title, run]) => {
+    const btn = document.createElement("button");
+    btn.innerHTML = label;
+    btn.title = title;
+    btn.addEventListener("mousedown", (e) => e.preventDefault()); // keep the selection alive
+    btn.onclick = () => { run(); const t = $("#selToolbar"); if (t) t.remove(); };
+    bar.appendChild(btn);
+  });
+  document.body.appendChild(bar);
+  const w = bar.offsetWidth;
+  bar.style.left = Math.max(8, Math.min(rect.left + rect.width / 2 - w / 2, window.innerWidth - w - 8)) + "px";
+  bar.style.top = Math.max(8, rect.top - 40) + "px";
+}
+
+// like wrapSelectionWith but with different text on each side (for [[links]])
+function wrapSelectionAsym(b, el, pre, post) {
+  const { start, end } = getSelectionRange(el);
+  if (start === end) return;
+  const t = b.text || "";
+  b.text = t.slice(0, start) + pre + t.slice(start, end) + post + t.slice(end);
+  el.textContent = b.text;
+  syncBody();
+  setCaretOffset(el, end + pre.length + post.length);
+}
+
+/* ---- drag-to-reorder (desktop) ----
+   One floating ⋮⋮ handle follows whichever block the mouse is over (how Notion does it —
+   no per-block DOM cost). Drag it onto another block; a blue line previews where the
+   block will land. Touch devices don't get handles — the toolbar's ↑↓ buttons cover them. */
+let dragSrcId = null, dragOverEl = null, dragOverAfter = false;
+
+function clearDropMarkers() {
+  document.querySelectorAll(".drop-before,.drop-after").forEach((el) => el.classList.remove("drop-before", "drop-after"));
+}
+
+function setupBlockDrag() {
+  const host = $("#blockEditor"), surface = $("#noteSurface");
+  if (!host || !surface) return;
+  const handle = document.createElement("div");
+  handle.id = "dragHandle";
+  handle.className = "drag-handle";
+  handle.textContent = "⋮⋮";
+  handle.title = "drag to move this block";
+  handle.draggable = true;
+  handle.style.display = "none";
+  surface.appendChild(handle);
+
+  host.addEventListener("mouseover", (e) => {
+    if (mode === "draw") { handle.style.display = "none"; return; }
+    const el = e.target.closest("#blockEditor > [data-id]");
+    if (!el) return;
+    handle.dataset.for = el.dataset.id;
+    handle.style.display = "flex";
+    handle.style.top = (el.offsetTop + 3) + "px";
+    handle.style.left = Math.max(0, el.offsetLeft - 20) + "px";
+  });
+  handle.addEventListener("dragstart", (e) => {
+    dragSrcId = handle.dataset.for || null;
+    e.dataTransfer.effectAllowed = "move";
+    try { e.dataTransfer.setData("text/plain", dragSrcId || ""); } catch (err) {}
+  });
+  handle.addEventListener("dragend", () => { clearDropMarkers(); dragSrcId = null; });
+  host.addEventListener("dragover", (e) => {
+    if (!dragSrcId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    clearDropMarkers();
+    const el = e.target.closest("#blockEditor > [data-id]");
+    if (!el || el.dataset.id === dragSrcId) { dragOverEl = null; return; }
+    const rect = el.getBoundingClientRect();
+    dragOverAfter = e.clientY > rect.top + rect.height / 2;
+    el.classList.add(dragOverAfter ? "drop-after" : "drop-before");
+    dragOverEl = el;
+  });
+  host.addEventListener("drop", (e) => {
+    e.preventDefault();
+    clearDropMarkers();
+    if (!dragSrcId || !dragOverEl) { dragSrcId = null; return; }
+    const from = blocks.findIndex((x) => x.id === dragSrcId);
+    let to = blocks.findIndex((x) => x.id === dragOverEl.dataset.id);
+    dragSrcId = null; dragOverEl = null;
+    if (from === -1 || to === -1) return;
+    const [moved] = blocks.splice(from, 1);
+    if (from < to) to--;
+    blocks.splice(to + (dragOverAfter ? 1 : 0), 0, moved);
+    syncBody(); renderEditorBlocks();
+  });
 }
 
 // floats the kbar on top of the on-screen keyboard. The visualViewport API reports the
@@ -3256,6 +3563,7 @@ function buildDrawControls() {
   $("#sw").querySelectorAll(".sw").forEach((el) => {
     el.onclick = () => {
       penIdx = +el.getAttribute("data-i");
+      setIdx("penIdx", penIdx); // remembered per device
       erasing = false; // picking a colour automatically turns eraser off
       updateEraser();
       $("#sw").querySelectorAll(".sw").forEach((x, j) => x.classList.toggle("on", j === penIdx));
@@ -3309,14 +3617,14 @@ function renderSizes() {
     sz.innerHTML = ERASER_SIZES.map((s, i) =>
       '<button class="szbtn ' + (i === eraserSizeIdx ? "on" : "") + '" data-ei="' + i + '">' + s.l + '</button>').join("");
     sz.querySelectorAll(".szbtn").forEach((el) => {
-      el.onclick = () => { eraserSizeIdx = +el.getAttribute("data-ei"); sz.querySelectorAll(".szbtn").forEach((x, j) => x.classList.toggle("on", j === eraserSizeIdx)); };
+      el.onclick = () => { eraserSizeIdx = +el.getAttribute("data-ei"); setIdx("eraserIdx", eraserSizeIdx); sz.querySelectorAll(".szbtn").forEach((x, j) => x.classList.toggle("on", j === eraserSizeIdx)); };
     });
   } else {
     // show pen sizes: fine / med / bold
     sz.innerHTML = SIZES.map((s, i) =>
       '<button class="szbtn ' + (i === sizeIdx ? "on" : "") + '" data-i="' + i + '">' + s.l + '</button>').join("");
     sz.querySelectorAll(".szbtn").forEach((el) => {
-      el.onclick = () => { sizeIdx = +el.getAttribute("data-i"); sz.querySelectorAll(".szbtn").forEach((x, j) => x.classList.toggle("on", j === sizeIdx)); };
+      el.onclick = () => { sizeIdx = +el.getAttribute("data-i"); setIdx("sizeIdx", sizeIdx); sz.querySelectorAll(".szbtn").forEach((x, j) => x.classList.toggle("on", j === sizeIdx)); };
     });
   }
 }
@@ -3569,6 +3877,7 @@ window.addEventListener("keydown", (e) => {
     if (dropdown && !dropdown.hidden) { closePalette(); const si = $("#searchBarInput"); if (si) si.blur(); return; }
     const scrim = $("#modalScrim");
     if (scrim && !scrim.hidden) { closeModal(); return; }
+    if (zenOn) { toggleZen(); return; }
     const blockHost = $("#blockEditor");
     if (blockHost && blockHost.contains(document.activeElement)) document.activeElement.blur();
     const ed = $("#ed"); if (ed) ed.blur();
@@ -3592,7 +3901,9 @@ function openShortcutHelp() {
     ["Ctrl/Cmd S", "save now"],
     ["Ctrl/Cmd E", "toggle draw / write"],
     ["Ctrl/Cmd B / I", "bold / italic (selection)"],
-    ["Ctrl/Cmd Shift X", "strikethrough (selection)"],
+    ["Ctrl/Cmd Shift X / H", "strikethrough / highlight (selection)"],
+    ["Shift Enter", "line break inside a paragraph"],
+    [":fire: :idea: :check:", "emoji shortcodes"],
     ["Ctrl/Cmd D", "duplicate block"],
     ["Ctrl/Cmd Enter", "check / uncheck to-do"],
     ["Ctrl/Cmd Alt 0-3", "paragraph / heading 1-3"],
