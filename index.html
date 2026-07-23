@@ -43,7 +43,11 @@
   color-scheme: light;
 }
 *{box-sizing:border-box}
-html,body{margin:0;height:100%}
+/* touch-action:manipulation kills the double-tap-to-zoom gesture (which fired constantly on
+   iPad while tapping between blocks) while leaving scrolling and pinch-zoom alone. The
+   browser intersects touch-action down the ancestor chain, so setting it here covers every
+   descendant; children that need less (the ink canvas) still set their own stricter value. */
+html,body{margin:0;height:100%; touch-action:manipulation}
 body{
   background:var(--surface); color:var(--text);
   font-family:var(--mono); font-size:14px; line-height:1.55;
@@ -431,9 +435,26 @@ body.zen .bar, body.zen .status, body.zen .kbar, body.zen .side, body.zen .backl
 
 /* draw */
 .drawwrap{flex:1; display:flex; flex-direction:column; min-height:0}
-.drawbar{display:flex; align-items:center; gap:10px; padding:8px 12px; flex-wrap:wrap;
-  background:var(--ink); border-bottom:1px solid var(--line2)}
-.swatches{display:flex; gap:6px}
+/* one line, always — the bar scrolls sideways instead of wrapping into a second row */
+.drawbar{display:flex; align-items:center; gap:8px; padding:6px 10px; flex-wrap:nowrap;
+  background:var(--ink); border-bottom:1px solid var(--line2);
+  overflow-x:auto; overflow-y:hidden; scrollbar-width:none}
+.drawbar::-webkit-scrollbar{display:none}
+.drawbar > *{flex:0 0 auto}
+.swatches{display:flex; gap:6px; flex-wrap:nowrap}
+/* add-a-colour slot */
+.sw-add{width:20px; height:20px; border-radius:50%; border:1px dashed var(--line); color:var(--dim);
+  display:flex; align-items:center; justify-content:center; font-size:13px; line-height:1; padding:0}
+.sw-add:hover{color:var(--green); border-color:var(--green)}
+/* long-press colour picker */
+.color-pop{position:fixed; z-index:38; background:var(--surface); border:1px solid var(--line);
+  border-radius:10px; padding:9px; box-shadow:0 10px 28px rgba(0,0,0,.45);
+  display:grid; grid-template-columns:repeat(5,auto); gap:9px}
+.color-pop .sw{width:26px; height:26px}
+.color-pop .pop-note{grid-column:1/-1; font-size:11px; color:var(--faint); text-align:center; padding-top:2px}
+.color-pop .pop-rm{grid-column:1/-1; font-size:11.5px; color:var(--dim); border:1px solid var(--line);
+  border-radius:6px; padding:6px; background:none}
+.color-pop .pop-rm:hover{color:var(--red); border-color:var(--red)}
 .sw{width:20px; height:20px; border-radius:50%; border:2px solid transparent; padding:0}
 .sw.on{border-color:var(--text); box-shadow:0 0 0 2px var(--surface) inset}
 .sizes{display:flex; gap:4px}
@@ -442,10 +463,9 @@ body.zen .bar, body.zen .status, body.zen .kbar, body.zen .side, body.zen .backl
 .toggle{font-size:12px; padding:4px 9px; border-radius:5px; border:1px solid var(--line); color:var(--dim)}
 .toggle.on{color:var(--ink); background:var(--green); border-color:var(--green)}
 /* ink selection actions — only present while strokes are selected */
-.ink-actions{display:flex; align-items:center; gap:5px; flex-wrap:wrap}
+.ink-actions{display:flex; align-items:center; gap:5px; flex-wrap:nowrap}
 .ink-actions:not(:empty){padding-left:8px; margin-left:4px; border-left:1px solid var(--line2)}
 .ink-count{font-size:11.5px; color:var(--blue); white-space:nowrap}
-.swatches{flex-wrap:wrap}
 /* canvas-scroll scrolls vertically only — touch-action:none so a palm landing near the canvas's
    edge (not exactly on it) can't trigger the browser's own native scroll, which used to fight
    with the manual JS scroll below and feel like the page randomly jumping around while writing */
@@ -611,7 +631,27 @@ let mode = "normal";   // normal | insert | draw
 // pen colour/sizes persist per device (like theme/penOnly) — pick your pen once
 function readIdx(key, dflt, max) { try { const v = parseInt(localStorage.getItem("glyph:" + key), 10); return v >= 0 && v <= max ? v : dflt; } catch (e) { return dflt; } }
 function setIdx(key, v) { try { localStorage.setItem("glyph:" + key, String(v)); } catch (e) {} }
-let penIdx = readIdx("penIdx", 1, PENS.length - 1), sizeIdx = readIdx("sizeIdx", 1, 2), eraserSizeIdx = readIdx("eraserIdx", 1, 2),
+/* The toolbar shows a few colour SLOTS rather than the whole palette: three by default,
+   long-press one to swap what colour it holds, "+" to add another (up to 8). PENS above is
+   the palette you pick from; penSlots is what's actually on the bar. Persisted per device. */
+const MAX_SLOTS = 8;
+const DEFAULT_SLOTS = ["#dcd7ba", "#7e9cd8", "#e46876"];
+let penSlots = readPenSlots();
+function readPenSlots() {
+  try {
+    const raw = JSON.parse(localStorage.getItem("glyph:penSlots"));
+    if (Array.isArray(raw) && raw.length && raw.every((c) => /^#[0-9a-f]{6}$/i.test(c))) return raw.slice(0, MAX_SLOTS);
+  } catch (e) {}
+  return DEFAULT_SLOTS.slice();
+}
+function savePenSlots() { try { localStorage.setItem("glyph:penSlots", JSON.stringify(penSlots)); } catch (e) {} }
+function penColor() { return penSlots[penIdx] || penSlots[0] || DEFAULT_SLOTS[0]; }
+function penName() {
+  const hit = PENS.find((p) => p.c.toLowerCase() === penColor().toLowerCase());
+  return hit ? hit.name : penColor();
+}
+
+let penIdx = readIdx("penIdx", 0, penSlots.length - 1), sizeIdx = readIdx("sizeIdx", 1, 2), eraserSizeIdx = readIdx("eraserIdx", 1, 2),
   penOnly = readPenOnly(), penSeen = false, erasing = false; // erasing = are we in eraser mode right now
 function readPenOnly() { try { return localStorage.getItem("glyph:penOnly") !== "0"; } catch (e) { return true; } }
 function setPenOnly(v) { penOnly = v; try { localStorage.setItem("glyph:penOnly", v ? "1" : "0"); } catch (e) {} }
@@ -3637,7 +3677,7 @@ function updateInkActions() {
     after();
   };
   $("#inkColor").onclick = () => {
-    for (const i of inkSel) { const s = active.strokes[i]; if (s && !s.erase) s.color = PENS[penIdx].c; }
+    for (const i of inkSel) { const s = active.strokes[i]; if (s && !s.erase) s.color = penColor(); }
     after();
   };
   $("#inkDup").onclick = () => {
@@ -3968,18 +4008,8 @@ function redoStroke() {
 }
 
 function buildDrawControls() {
-  $("#sw").innerHTML = PENS.map((p, i) =>
-    '<button class="sw ' + (i === penIdx ? "on" : "") + '" data-i="' + i + '" style="background:' + p.c + '" title="' + p.name + '" aria-label="' + p.name + '"></button>').join("");
+  renderSwatches();
   renderSizes(); // draws pen or eraser sizes depending on current mode
-  $("#sw").querySelectorAll(".sw").forEach((el) => {
-    el.onclick = () => {
-      penIdx = +el.getAttribute("data-i");
-      setIdx("penIdx", penIdx); // remembered per device
-      erasing = false; // picking a colour automatically turns eraser off
-      updateEraser();
-      $("#sw").querySelectorAll(".sw").forEach((x, j) => x.classList.toggle("on", j === penIdx));
-    };
-  });
   // marker, eraser and lasso are mutually exclusive tools
   $("#marker").onclick = () => { markerOn = !markerOn; if (markerOn) { erasing = false; setLasso(false); } updateEraser(); updateMarker(); };
   $("#eraser").onclick = () => { erasing = !erasing; if (erasing) { markerOn = false; setLasso(false); } updateEraser(); updateMarker(); };
@@ -4002,6 +4032,96 @@ function updateMarker() {
   b.classList.toggle("on", markerOn);
   b.textContent = "marker " + (markerOn ? "on" : "off");
 }
+
+/* ---- colour slots on the toolbar ---- */
+function renderSwatches() {
+  const host = $("#sw");
+  if (!host) return;
+  if (penIdx >= penSlots.length) penIdx = penSlots.length - 1;
+  host.innerHTML =
+    penSlots.map((c, i) =>
+      '<button class="sw ' + (i === penIdx ? "on" : "") + '" data-i="' + i + '" style="background:' + esc(c) +
+      '" title="tap to use · hold to change this colour" aria-label="pen colour ' + (i + 1) + '"></button>').join("") +
+    (penSlots.length < MAX_SLOTS ? '<button class="sw-add" id="swAdd" title="add another colour" aria-label="Add colour">+</button>' : "");
+
+  host.querySelectorAll(".sw").forEach((el) => {
+    const i = +el.getAttribute("data-i");
+    let holdTimer = null, held = false;
+    const startHold = () => {
+      held = false;
+      clearTimeout(holdTimer);
+      holdTimer = setTimeout(() => { held = true; openColorPicker(el, i); }, 450);
+    };
+    const cancelHold = () => clearTimeout(holdTimer);
+    el.addEventListener("pointerdown", startHold);
+    el.addEventListener("pointerup", cancelHold);
+    el.addEventListener("pointerleave", cancelHold);
+    el.addEventListener("pointercancel", cancelHold);
+    el.addEventListener("contextmenu", (e) => { e.preventDefault(); openColorPicker(el, i); }); // desktop equivalent
+    el.onclick = () => {
+      if (held) { held = false; return; } // the long-press already opened the picker
+      selectPenSlot(i);
+    };
+  });
+  const add = $("#swAdd");
+  if (add) add.onclick = () => openColorPicker(add, -1); // -1 = "append a new slot"
+}
+
+function selectPenSlot(i) {
+  penIdx = i;
+  setIdx("penIdx", penIdx); // remembered per device
+  erasing = false;          // picking a colour automatically turns eraser off
+  updateEraser();
+  renderSwatches();
+  renderStatus();
+}
+
+// long-press (or right-click) a slot: pick any palette colour for it, or remove the slot.
+// slotIdx === -1 means the "+" button — the chosen colour becomes a new slot.
+function openColorPicker(anchorEl, slotIdx) {
+  closeColorPicker();
+  const pop = document.createElement("div");
+  pop.className = "color-pop";
+  pop.id = "colorPop";
+  pop.innerHTML =
+    PENS.map((p) => '<button class="sw" data-c="' + esc(p.c) + '" style="background:' + esc(p.c) + '" title="' + esc(p.name) + '"></button>').join("") +
+    (slotIdx >= 0 && penSlots.length > 1 ? '<button class="pop-rm" id="popRm">remove this colour</button>' : "") +
+    '<div class="pop-note">' + (slotIdx < 0 ? "pick a colour to add" : "pick a colour for this slot") + "</div>";
+  document.body.appendChild(pop);
+
+  // anchor under the swatch, clamped into the window
+  const r = anchorEl.getBoundingClientRect();
+  const w = pop.offsetWidth, h = pop.offsetHeight;
+  pop.style.left = Math.max(6, Math.min(r.left - 8, window.innerWidth - w - 6)) + "px";
+  pop.style.top = (r.bottom + h + 8 > window.innerHeight ? Math.max(6, r.top - h - 8) : r.bottom + 8) + "px";
+
+  pop.querySelectorAll("[data-c]").forEach((btn) => {
+    btn.onclick = () => {
+      const c = btn.getAttribute("data-c");
+      if (slotIdx < 0) { penSlots.push(c); penIdx = penSlots.length - 1; }
+      else { penSlots[slotIdx] = c; penIdx = slotIdx; }
+      savePenSlots(); setIdx("penIdx", penIdx);
+      closeColorPicker(); renderSwatches(); renderStatus();
+    };
+  });
+  const rm = $("#popRm");
+  if (rm) rm.onclick = () => {
+    penSlots.splice(slotIdx, 1);
+    if (penIdx >= penSlots.length) penIdx = penSlots.length - 1;
+    savePenSlots(); setIdx("penIdx", penIdx);
+    closeColorPicker(); renderSwatches(); renderStatus();
+  };
+}
+
+function closeColorPicker() {
+  const p = $("#colorPop");
+  if (p) p.remove();
+}
+// tapping anywhere else dismisses it (capture phase so it runs before the swatch handlers)
+document.addEventListener("pointerdown", (e) => {
+  const p = $("#colorPop");
+  if (p && !p.contains(e.target) && !e.target.closest(".sw, .sw-add")) closeColorPicker();
+}, true);
 
 function setLasso(on) {
   lassoOn = on;
@@ -4115,9 +4235,25 @@ let lassoOn = false;      // lasso tool active
 let lassoPts = null;      // polygon being drawn right now
 let inkSel = [];          // indices into active.strokes
 let inkDrag = null;       // {sx, sy, dx, dy} while dragging the selection
+let inkResize = null;     // {ax, ay, d0, f} while stretching the bottom-right corner
+
+const SEL_PAD = 10;       // gap between the ink and its selection box
+const HANDLE_R = 9;       // drawn radius of the corner grip
+const HANDLE_HIT = 26;    // touch radius — a fingertip needs far more than the drawn circle
+
+// where the stretch grip sits for a given selection box
+function handlePos(box) { return { x: box.x1 + SEL_PAD, y: box.y1 + SEL_PAD }; }
+
+// uniform scale factor from dragging the corner: how much further the pointer is from the
+// anchor (the box's top-left) than the corner originally was
+function resizeFactor(ax, ay, px, py, d0) {
+  const d = Math.hypot(px - ax, py - ay);
+  if (!d0) return 1;
+  return Math.max(0.15, Math.min(8, d / d0));
+}
 
 function clearInkSelection() {
-  inkSel = []; lassoPts = null; inkDrag = null;
+  inkSel = []; lassoPts = null; inkDrag = null; inkResize = null;
   updateInkActions();
   if ($("#cv")) { redraw(); clearLive(); }
 }
@@ -4196,7 +4332,9 @@ function redraw(skip) {
     if (skip && skip.has(i)) continue;
     drawStroke(ctx, all[i]);
   }
-  if (!inkDrag) drawSelectionOverlay(); // overlay lives on the live canvas; refresh it too
+  // the outline lives on the live canvas; refresh it — unless a drag/stretch is mid-flight,
+  // in which case drawLive owns that canvas and will paint the outline itself
+  if (!inkDrag && !inkResize) drawSelectionOverlay();
 }
 
 // draws only the current live stroke onto the top canvas — called on every pointer move via rAF
@@ -4232,6 +4370,16 @@ function drawLive() {
     for (const i of inkSel) if (active.strokes[i]) drawStroke(ctx, active.strokes[i]);
     ctx.restore();
   }
+  if (inkResize && inkSel.length) {
+    // preview the stretch: scaling the context scales the stroke widths with it, which is
+    // exactly what committing does to s.size afterwards
+    ctx.save();
+    ctx.translate(inkResize.ax, inkResize.ay);
+    ctx.scale(inkResize.f, inkResize.f);
+    ctx.translate(-inkResize.ax, -inkResize.ay);
+    for (const i of inkSel) if (active.strokes[i]) drawStroke(ctx, active.strokes[i]);
+    ctx.restore();
+  }
   drawSelectionOutline(ctx);
 }
 
@@ -4246,12 +4394,33 @@ function drawSelectionOutline(ctx) {
   const box = strokesBBox(active.strokes || [], inkSel);
   if (!box) return;
   const dx = inkDrag ? inkDrag.dx : 0, dy = inkDrag ? inkDrag.dy : 0;
-  const pad = 10;
+  const blue = cssVar("--blue", "#7e9cd8");
+  // while stretching, the box follows the previewed scale (anchored at its top-left)
+  let x = box.x0 - SEL_PAD + dx, y = box.y0 - SEL_PAD + dy;
+  let w = box.w + SEL_PAD * 2, h = box.h + SEL_PAD * 2;
+  if (inkResize) {
+    const f = inkResize.f;
+    x = inkResize.ax + (box.x0 - SEL_PAD - inkResize.ax) * f;
+    y = inkResize.ay + (box.y0 - SEL_PAD - inkResize.ay) * f;
+    w *= f; h *= f;
+  }
   ctx.save();
   ctx.setLineDash([5, 4]);
   ctx.lineWidth = 1.5;
-  ctx.strokeStyle = cssVar("--blue", "#7e9cd8");
-  ctx.strokeRect(box.x0 - pad + dx, box.y0 - pad + dy, box.w + pad * 2, box.h + pad * 2);
+  ctx.strokeStyle = blue;
+  ctx.strokeRect(x, y, w, h);
+  // the bottom-right grip: drag it to stretch the writing bigger or smaller
+  ctx.setLineDash([]);
+  ctx.fillStyle = cssVar("--surface", "#1f1f28");
+  ctx.beginPath();
+  ctx.arc(x + w, y + h, HANDLE_R, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  // two diagonal ticks so it reads as a resize grip rather than a dot
+  ctx.beginPath();
+  ctx.moveTo(x + w - 4, y + h + 1); ctx.lineTo(x + w + 1, y + h - 4);
+  ctx.moveTo(x + w - 1, y + h + 4); ctx.lineTo(x + w + 4, y + h - 1);
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -4305,8 +4474,14 @@ function down(e) {
   if (lassoOn) {
     const pt = ptFrom(e);
     const box = inkSel.length ? strokesBBox(active.strokes || [], inkSel) : null;
-    // starting inside an existing selection means "move it", anywhere else starts a new lasso
-    if (box && pt.x >= box.x0 - 14 && pt.x <= box.x1 + 14 && pt.y >= box.y0 - 14 && pt.y <= box.y1 + 14) {
+    const grip = box ? handlePos(box) : null;
+    // the corner grip is checked first — it sits just outside the box, inside the move zone
+    if (grip && Math.hypot(pt.x - grip.x, pt.y - grip.y) <= HANDLE_HIT) {
+      const ax = box.x0 - SEL_PAD, ay = box.y0 - SEL_PAD; // anchor: the opposite corner
+      inkResize = { ax, ay, d0: Math.hypot(grip.x - ax, grip.y - ay), f: 1 };
+      redraw(new Set(inkSel)); // lift the selection off the base canvas for the preview
+    } else if (box && pt.x >= box.x0 - 14 && pt.x <= box.x1 + 14 && pt.y >= box.y0 - 14 && pt.y <= box.y1 + 14) {
+      // starting inside an existing selection means "move it"
       inkDrag = { sx: pt.x, sy: pt.y, dx: 0, dy: 0 };
       redraw(new Set(inkSel)); // lift the selection off the base canvas for the drag
     } else {
@@ -4325,7 +4500,7 @@ function down(e) {
   // pick size from eraser sizes or pen sizes depending on current mode;
   // marker strokes go extra wide (real highlighters are fat) and render translucent
   const strokeSize = erasing ? ERASER_SIZES[eraserSizeIdx].v : (markerOn ? SIZES[sizeIdx].v * 3.2 : SIZES[sizeIdx].v);
-  cur = { erase: erasing, hl: !erasing && markerOn, color: PENS[penIdx].c, size: strokeSize, points: [ptFrom(e)] };
+  cur = { erase: erasing, hl: !erasing && markerOn, color: penColor(), size: strokeSize, points: [ptFrom(e)] };
   clearLive(); // start the live canvas fresh for this stroke
 }
 function move(e) {
@@ -4344,7 +4519,9 @@ function move(e) {
   const rect = $("#cv").getBoundingClientRect();
 
   if (lassoOn) {
-    if (inkDrag) {
+    if (inkResize) {
+      inkResize.f = resizeFactor(inkResize.ax, inkResize.ay, e.clientX - rect.left, e.clientY - rect.top, inkResize.d0);
+    } else if (inkDrag) {
       inkDrag.dx = e.clientX - rect.left - inkDrag.sx;
       inkDrag.dy = e.clientY - rect.top - inkDrag.sy;
     } else if (lassoPts) {
@@ -4409,7 +4586,16 @@ function up() {
   if (liveRaf) { cancelAnimationFrame(liveRaf); liveRaf = null; }
 
   if (lassoOn) {
-    if (inkDrag) {
+    if (inkResize) {
+      // bake the previewed scale into the strokes (same transform, now permanent)
+      if (Math.abs(inkResize.f - 1) > 0.01) {
+        scaleStrokes(active.strokes || [], inkSel, inkResize.f, inkResize.ax, inkResize.ay);
+        scheduleSave();
+      }
+      inkResize = null;
+      sizeInkCanvas(); // enlarged ink may now extend past the canvas
+      drawSelectionOverlay();
+    } else if (inkDrag) {
       // bake the drag offset into the strokes themselves
       if (inkDrag.dx || inkDrag.dy) {
         translateStrokes(active.strokes || [], inkSel, inkDrag.dx, inkDrag.dy);
@@ -4453,7 +4639,7 @@ function renderStatus() {
   let right;
   if (mode === "draw") {
     const tool = erasing ? "eraser" : markerOn ? "marker" : SIZES[sizeIdx].l;
-    right = '<span class="seg dim hide-sm">' + PENS[penIdx].name + " \u00B7 " + tool + '</span>';
+    right = '<span class="seg dim hide-sm">' + esc(penName()) + " \u00B7 " + tool + '</span>';
   } else {
     right = '<span class="seg dim hide-sm">' + words + "w " + chars + "c" +
       (todoTotal ? " \u00B7 " + todoDone + "/" + todoTotal + " \u2713" : "") + '</span>';
@@ -4566,10 +4752,11 @@ const HELP_SECTIONS = [
   ]},
   { title: "drawing", rows: [
     ["start drawing", "touch the page with an apple pencil — instantly, over your text. Or tap draw / press d"],
-    ["toolbar", "15 pen colors · 3 sizes · marker (translucent) · eraser · select · undo/redo · clear · done"],
+    ["toolbar", "colour slots · 3 sizes · marker (translucent) · eraser · select · undo/redo · clear · done — all on one scrolling line"],
+    ["colour slots", "three colours on the bar: tap to use, HOLD one to swap it for any of the 15 palette colours, + adds another (up to 8)"],
     ["select ink", "tap select, then circle strokes with the pencil to lasso them"],
     ["move ink", "drag from inside the selection box"],
-    ["resize ink", "A+ / A− scale the selected writing around its own centre, stroke width included"],
+    ["resize ink", "drag the round grip on the bottom-right corner to stretch or shrink it — or use A+ / A−"],
     ["highlight ink", "turns selected strokes into translucent highlighter ink — press again to undo"],
     ["recolor ink", "pick a pen colour, then press recolor to repaint the selection"],
     ["duplicate / delete ink", "buttons on the selection bar"],
