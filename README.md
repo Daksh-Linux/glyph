@@ -12,10 +12,33 @@ Every "note-taking app" I tried wanted to sync my thoughts to someone else's ser
 
 ## Features
 
+### Writing
+- **Block editor** — Notion-style editing: headings, bullet/numbered lists, to-do checkboxes, quotes, code blocks, tables, collapsible toggles, dividers. Everything is still plain markdown underneath
+- **Slash menu** — type `/` at the start of a line to insert any block type, a calendar for the current month, or today's date
+- **Markdown shortcuts** — type `# `, `- `, `1. `, `- [ ] `, `> `, or ``` and the block converts as you type
+- **Inline formatting** — `**bold**`, `*italic*`, `~~strike~~`, `` `code` ``, `==highlight==`, clickable `[links](https://...)`
+- **Keyboard bar** — a formatting toolbar with every block type, undo/redo, move/duplicate/delete block, indent/outdent; on iPad and Android it floats right above the on-screen keyboard
+- **Undo / redo** — real history for text (`Ctrl+Z` / `Ctrl+Shift+Z`) and for pen strokes, independently per note
+- **Connected notes** — `[[link]]` between notes with autocomplete, plus a backlinks panel showing what links here
+
+### Drawing
+- **One surface for text and ink** — draw directly over your notes with an Apple Pencil; the ink stays visible while you type
+- **Pencil = draw, finger = scroll** — touching the page with the pencil switches to draw mode instantly and that same stroke already draws; palm rejection built in
+- **Pens, marker, eraser** — six pen colors, three sizes, a translucent highlighter marker, an eraser with its own sizes, stroke undo/redo
+
+### Planning (templates)
+- **New note from a template** — daily planner, weekly planner, monthly calendar (generated for the actual month), money planner, habit tracker, goal tracker, project tracker, reading list, meal planner, workout log
+- **To-do progress** — the status bar counts your checkboxes ("3/7 ✓")
+
+### Everything else
 - **Multi-user** — open signup, each account gets an isolated vault (`users/<username>/vault/`)
-- **Three modes** — `normal` (vim-like keys), `insert` (markdown editing), `draw` (Apple Pencil / touch canvas)
+- **Command palette** — `Ctrl/Cmd+K` searches every note, action and template with fuzzy matching
+- **Three modes** — `normal` (vim-like keys), `insert` (editing), `draw` (pen canvas)
 - **Light & dark themes** — a Kanagawa-inspired dark terminal theme and a light theme, toggle in the top bar, preference saved per device
-- **Offline-first** — every keystroke saves to `localStorage` immediately; syncs to the server when back online
+- **Offline-first** — every keystroke saves to `localStorage` immediately; syncs to the server when back online; live sync between your devices every 2s
+- **Reopens where you left off** — the last note you viewed comes back after a reload
+- **Local files** — open and edit a real file from your disk, or pull it into your vault as a note
+- **Export** — download any note as a `.md` file, or duplicate it (ink included)
 - **PWA** — installable on iOS/Android/desktop, works offline
 - **Self-service account deletion** — delete your account and every note in it yourself, no need to ask
 - **Plain-language [privacy & terms](https://glyph.dakshhq.com/legal)** — written by the person who runs it, not a lawyer
@@ -68,13 +91,26 @@ journalctl --user -u glyph -f   # live logs
 | `users.json` | `{username: {salt, hash}}` — gitignored, created at runtime |
 | `users/<username>/vault/` | That user's markdown notes — gitignored |
 
-## Keyboard shortcuts (normal mode)
+## Keyboard shortcuts
+
+Press `?` (when not typing) or search "keyboard shortcuts" in the palette to see this list in-app.
 
 | Key | Action |
 |-----|--------|
-| `o` | New note |
-| `i` | Edit (insert mode) |
-| `d` | Draw mode |
+| `Ctrl/Cmd+K` | Search notes + commands |
+| `Ctrl/Cmd+Z` / `Ctrl/Cmd+Shift+Z` | Undo / redo (text, or strokes in draw mode) |
+| `Ctrl/Cmd+S` | Save now |
+| `Ctrl/Cmd+E` | Toggle draw / write |
+| `Ctrl/Cmd+B` / `I` / `Shift+X` | Bold / italic / strikethrough (select text first) |
+| `Ctrl/Cmd+D` | Duplicate block |
+| `Ctrl/Cmd+Enter` | Check / uncheck a to-do |
+| `Ctrl/Cmd+Alt+0–3` | Paragraph / heading 1–3 |
+| `Alt+↑` / `Alt+↓` | Move block up / down |
+| `Tab` / `Shift+Tab` | Indent / outdent a list item |
+| `/` | Block menu (at the start of a line) |
+| `[[` | Link to another note |
+| `o` / `i` / `d` | New note / insert / draw (when not typing) |
+| `?` | Shortcut help |
 | `Esc` | Back to normal mode |
 
 ## Devices this runs on

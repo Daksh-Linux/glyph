@@ -60,18 +60,31 @@ svg{display:block}
    buttons below the status bar while the same ink colour fills behind it, making it invisible */
 .bar{display:flex; align-items:center; gap:10px;
   height:calc(42px + env(safe-area-inset-top)); padding:env(safe-area-inset-top) 10px 0;
-  background:var(--ink); border-bottom:1px solid var(--line); flex:0 0 auto}
+  background:var(--ink); border-bottom:1px solid var(--line); flex:0 0 auto;
+  overflow-x:auto; scrollbar-width:none} /* safety net: even if the trims below aren't enough on
+  some device, the bar scrolls instead of silently clipping icons past the screen edge */
+.bar::-webkit-scrollbar{display:none}
 .brandmark{width:18px; height:18px; border-radius:4px; flex:0 0 auto; display:block}
-.prompt{white-space:nowrap; display:flex; align-items:center; gap:8px}
+.prompt{white-space:nowrap; display:flex; align-items:center; gap:8px; flex-shrink:0}
 .user{color:var(--green)} .path{color:var(--blue)} .sig{color:var(--mauve)}
 .file{opacity:.85; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:34vw}
-.bar .tab{font-size:13px; padding:5px 10px; border:1px solid var(--line); border-radius:5px; color:var(--dim); white-space:nowrap}
+.bar .tab{font-size:13px; padding:5px 10px; border:1px solid var(--line); border-radius:5px; color:var(--dim); white-space:nowrap; flex-shrink:0}
 .bar .tab .key{color:var(--mauve)}
 .bar .tab.on{color:var(--text); border-color:var(--blue); background:var(--sel-bg)}
 .bar .tab.on .key{color:var(--blue)}
-.iconbtn{display:flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:5px; color:var(--dim)}
+.iconbtn{display:flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:5px; color:var(--dim); flex-shrink:0}
 .iconbtn:hover{color:var(--text); background:var(--panel)}
 .only-mobile{display:none}
+/* a real (readonly) input, not a button — grows into the gap between the two spacers around it
+   up to max-width on desktop, shrinks down toward just the icon on a narrow phone since nothing
+   here has flex-shrink:0 the way .iconbtn does */
+.searchbar{display:flex; align-items:center; gap:6px; background:var(--panel); border:1px solid var(--line);
+  border-radius:15px; padding:0 10px; height:28px; color:var(--dim); flex:1 1 auto; min-width:30px; max-width:340px; cursor:pointer}
+.searchbar:hover, .searchbar:focus-within, .searchbar:focus{border-color:var(--blue); color:var(--text)}
+.searchbar svg{flex:0 0 auto}
+.searchbar input{flex:1; min-width:0; width:100%; background:none; border:none; outline:none; color:var(--text);
+  font-family:var(--mono); font-size:12.5px; cursor:pointer; text-overflow:ellipsis}
+.searchbar input::placeholder{color:var(--dim)}
 
 /* body */
 .body{flex:1; display:flex; min-height:0; position:relative}
@@ -82,26 +95,30 @@ svg{display:block}
 .side-head{display:flex; align-items:center; justify-content:space-between;
   padding:10px 12px 8px; color:var(--dim); font-size:12px; letter-spacing:.5px;
   border-bottom:1px solid var(--line2)}
-.list{list-style:none; margin:0; padding:6px; overflow-y:auto; flex:1}
-.row{display:flex; align-items:center; gap:7px; padding:6px 8px; border-radius:5px; color:var(--text); cursor:pointer}
-.row:hover{background:var(--panel)}
-.row.sel{background:var(--sel-bg)}
+.list{list-style:none; margin:0; padding:8px; overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:2px}
+.row{display:flex; align-items:center; gap:7px; padding:7px 8px; border-radius:9px; color:var(--text);
+  cursor:pointer; border:1px solid transparent}
+.row:hover{background:var(--panel); border-color:var(--line2)}
+.row.sel{background:var(--sel-bg); border-color:var(--blue)}
 .tree-tog{color:var(--dim); font-size:11px; padding:0; line-height:1; flex:0 0 12px; text-align:center; width:12px}
 .tree-tog:hover{color:var(--blue)}
-.tree-leaf{color:var(--blue); width:12px; text-align:center; white-space:pre; font-size:11px; flex:0 0 12px}
+.tree-leaf{width:12px; flex:0 0 12px}
 .row .name{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .row.sel .name{color:var(--text)}
-.row .ink{color:var(--yellow); font-size:11px}
-.addchild{opacity:0; color:var(--dim); font-size:13px; padding:1px 4px; border-radius:4px; line-height:1}
+.row .ink{color:var(--yellow); font-size:11px; flex:0 0 auto}
+.addchild{opacity:0; color:var(--dim); font-size:13px; padding:1px 5px; border-radius:6px; line-height:1; flex:0 0 auto}
 .row:hover .addchild{opacity:.6}
 .addchild:hover{opacity:1!important; color:var(--green)}
-.row .del{opacity:0; color:var(--dim); display:flex; padding:2px; border-radius:4px}
+.row .del{opacity:0; color:var(--dim); display:flex; padding:2px; border-radius:6px; flex:0 0 auto}
 .row:hover .del{opacity:.7}
-.row .del:hover{opacity:1; color:var(--red)}
+.row .del:hover{opacity:1!important; color:var(--red)}
+.empty-folder{padding:22px 14px; text-align:center; color:var(--dim); font-size:12.5px; line-height:1.7; list-style:none}
 .newrow{padding:9px 12px; text-align:left; width:100%; color:var(--dim); border-top:1px solid var(--line2)}
 .newrow:hover{color:var(--green)}
 .newrow.danger{font-size:11px; color:var(--faint); border-top:none}
 .newrow.danger:hover{color:var(--red)}
+.newrow.sub{font-size:11px; text-decoration:none; display:block; border-top:none; color:var(--faint)}
+.newrow.sub:hover{color:var(--green)}
 .scrim{display:none}
 [hidden]{display:none!important} /* author CSS can override UA [hidden]; this prevents that */
 
@@ -119,16 +136,154 @@ svg{display:block}
 .modal .err{color:var(--red); font-size:12px; margin-top:8px; display:none}
 .modal .err.show{display:block}
 
+/* command palette — a dropdown anchored under the search bar (position set in JS from
+   #searchBar's actual on-screen rect, since it's not in a positioning context of its own),
+   not a centered modal. #searchBarInput itself is the live typable field. */
+.palette-dropdown{position:fixed; z-index:45; background:var(--surface); border:1px solid var(--line);
+  border-radius:10px; box-shadow:0 12px 32px rgba(0,0,0,.45); overflow:hidden}
+.palette-section{padding:8px 12px 4px; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--faint)}
+.palette-section-toggle{cursor:pointer; border-radius:4px}
+.palette-section-toggle:hover{color:var(--text); background:var(--panel)}
+.palette-list{list-style:none; margin:0; padding:6px; max-height:min(60vh,420px); overflow-y:auto}
+.palette-list li{padding:8px 10px; border-radius:5px; color:var(--text); cursor:pointer; display:flex; align-items:center; gap:8px; font-size:13.5px; scroll-margin:6px}
+.palette-list li .kind{color:var(--dim); font-size:11px; flex:0 0 auto}
+.palette-list li.sel{background:var(--sel-bg)}
+.palette-list li:hover{background:var(--panel)}
+.palette-empty{padding:14px 16px; color:var(--dim); font-size:13px}
+
+/* [[ ]] link autocomplete */
+.wiki-popup{position:absolute; left:16px; bottom:16px; z-index:15; width:240px; max-height:220px; overflow-y:auto;
+  background:var(--surface); border:1px solid var(--line); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.35); padding:5px}
+.wiki-popup li{list-style:none; padding:7px 9px; border-radius:5px; font-size:13px; color:var(--text); cursor:pointer}
+.wiki-popup li.sel{background:var(--sel-bg)}
+.wiki-popup li:hover{background:var(--panel)}
+
+/* backlinks panel */
+.backlinks{flex:0 0 auto; border-top:1px solid var(--line2); background:var(--ink)}
+.backlinks-head{display:flex; align-items:center; gap:6px; padding:8px 14px; color:var(--dim); font-size:11.5px; cursor:pointer; user-select:none}
+.backlinks-head .tri{font-size:9px; transition:transform .15s ease}
+.backlinks.collapsed .tri{transform:rotate(-90deg)}
+.backlinks.collapsed .backlinks-list{display:none}
+.backlinks-list{list-style:none; margin:0; padding:0 14px 10px; display:flex; flex-wrap:wrap; gap:6px}
+.backlinks-list li{background:var(--panel); border:1px solid var(--line); border-radius:5px; padding:4px 9px; font-size:12px; color:var(--blue); cursor:pointer}
+.backlinks-list li:hover{border-color:var(--blue)}
+
 /* main */
-.main{flex:1; min-width:0; display:flex; flex-direction:column}
+.main{flex:1; min-width:0; display:flex; flex-direction:column; position:relative}
 .editor{flex:1; width:100%; resize:none; border:none; outline:none; box-shadow:none; padding:22px clamp(16px,5vw,64px);
   background:var(--surface); color:var(--text); font-family:var(--mono);
   font-size:16px; line-height:1.7; tab-size:2; box-sizing:border-box;
   user-select:text; -webkit-user-select:text;
   -webkit-tap-highlight-color:transparent; -webkit-appearance:none; appearance:none;}
 .editor:focus{outline:none; box-shadow:none; border:none;}
+.localfile-bar{display:flex; align-items:center; gap:10px; padding:8px 14px; flex:0 0 auto;
+  background:var(--ink); border-bottom:1px solid var(--line2); font-size:12.5px;}
+.localfile-name{color:var(--dim);}
+.localfile-hint{color:var(--faint); font-size:11.5px; white-space:nowrap;}
+.localfile-bar .ghost.sm{padding:4px 10px; font-size:12px;}
 .editor::placeholder{color:var(--faint)}
 .empty{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; color:var(--dim)}
+
+/* block editor (Phase 2) — on by default; localStorage["glyph:blockEditor"] = "0" opts back out */
+/* the note area is now one shared surface: .note-scroll scrolls, .note-surface holds the text
+   layer (#blockEditor) AND the ink canvases stacked on top of each other. Text and drawing live
+   on the same canvas — draw mode just changes which layer receives input, nothing is rebuilt. */
+.note-scroll{flex:1; overflow-y:auto; overflow-x:hidden; position:relative; min-height:0}
+.note-surface{position:relative; min-height:100%}
+/* ink canvases cover the whole surface; pointer-events:none means in text mode every tap falls
+   straight through to the text underneath — the ink is just visible on top */
+.ink{position:absolute; top:0; left:0; pointer-events:none; z-index:5}
+/* draw mode: the scroller stops native touch scrolling (JS handles it, so the pen never scrolls)
+   and the text layer stops receiving taps so a pen stroke can't focus a block mid-drawing */
+.note-scroll.draw-on{touch-action:none; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; cursor:crosshair}
+/* same dot-grid paper the old draw screen had — appears only while drawing */
+.draw-on .note-surface{background:radial-gradient(circle at 1px 1px, var(--line2) 1px, transparent 0) 0 0/22px 22px}
+.draw-on #blockEditor{pointer-events:none; user-select:none; -webkit-user-select:none}
+/* 45vh bottom padding = the "empty space" below the last block is real, tappable writing room */
+#blockEditor{width:100%; position:relative; z-index:1; padding:22px clamp(16px,5vw,64px) 45vh;
+  color:var(--text); font-family:var(--mono); font-size:16px; line-height:1.7; box-sizing:border-box;}
+
+/* keyboard bar — the Notion-style formatting toolbar. Sits above the status bar in normal flow;
+   when the on-screen keyboard opens (iPad/Android) it floats up to sit right on top of it
+   (see positionKbar(), driven by the visualViewport API) */
+.kbar{display:flex; align-items:center; gap:2px; padding:4px 6px; flex:0 0 auto;
+  background:var(--ink); border-top:1px solid var(--line); overflow-x:auto; scrollbar-width:none;
+  padding-bottom:calc(4px + env(safe-area-inset-bottom))}
+.kbar::-webkit-scrollbar{display:none}
+.kbar button{flex:0 0 auto; min-width:34px; height:32px; padding:0 8px; border-radius:6px;
+  color:var(--dim); font-size:13px; display:flex; align-items:center; justify-content:center; white-space:nowrap}
+.kbar button:hover{color:var(--text); background:var(--panel)}
+.kbar button:active{color:var(--text); background:var(--sel-bg)}
+.kbar .kdiv{flex:0 0 1px; height:20px; background:var(--line2); margin:0 4px}
+.kbar.floating{position:fixed; left:0; right:0; bottom:0; z-index:30}
+
+/* inline rendering extras */
+.inline-code{background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:0 5px; font-size:.9em}
+.block mark, .cell-text mark{background:var(--yellow); color:var(--ink); padding:0 3px; border-radius:3px}
+.md-link{color:var(--green); text-decoration:underline; cursor:pointer}
+.md-link:hover{color:var(--blue)}
+
+/* keyboard-shortcuts help modal */
+.modal.wide{max-width:440px; max-height:80vh; overflow-y:auto}
+.sc-row{display:flex; justify-content:space-between; gap:14px; font-size:12.5px; padding:4px 0; border-bottom:1px solid var(--line2)}
+.sc-row span{color:var(--dim)}
+.sc-row kbd{font-family:var(--mono); color:var(--blue); background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:1px 6px; font-size:11.5px; white-space:nowrap}
+.block{outline:none; padding:2px 0; min-height:1.3em; word-break:break-word; white-space:pre-wrap;}
+.block:empty::before{content:attr(data-placeholder); color:var(--faint); pointer-events:none;}
+.block-h1{font-size:1.5em; font-weight:700; margin-top:.3em;}
+.block-h2{font-size:1.25em; font-weight:700; margin-top:.3em;}
+.block-h3{font-size:1.1em; font-weight:700; margin-top:.3em;}
+.block-ul, .block-ol{display:flex; gap:8px;}
+.block-ul .marker, .block-ol .marker{color:var(--dim); flex:0 0 auto; user-select:none;}
+.block-ul .block-text, .block-ol .block-text{flex:1; min-width:0;}
+.block-todo{display:flex; gap:8px; align-items:flex-start;}
+.block-todo input{margin-top:6px; flex:0 0 auto; width:15px; height:15px; accent-color:var(--blue);}
+.block-todo .block-text{flex:1; min-width:0;}
+.block-todo .block-text.checked{color:var(--dim); text-decoration:line-through;}
+.block-quote{border-left:3px solid var(--mauve); padding-left:12px; color:var(--dim); font-style:italic;}
+.wiki-link-rendered{color:var(--blue); text-decoration:underline; text-decoration-style:dotted; cursor:pointer;}
+.wiki-link-rendered:hover{color:var(--mauve);}
+.block-code-wrap{margin:4px 0;}
+.block-code-ta{display:block; width:100%; background:var(--panel); border:1px solid var(--line); border-radius:6px;
+  color:var(--text); font-family:var(--mono); font-size:14px; line-height:1.5; padding:10px 12px; resize:vertical;
+  box-sizing:border-box; min-height:2.6em;}
+.block-hr{border:none; border-top:1px solid var(--line); margin:14px 0; cursor:pointer;}
+.block-hr:hover{border-top-color:var(--red);}
+.block-toggle{margin:4px 0; border:1px solid var(--line); border-radius:6px; padding:2px 10px;}
+.block-toggle summary{padding:8px 2px; cursor:pointer; list-style:revert; color:var(--text); display:flex; align-items:center; gap:8px;}
+.block-toggle summary::marker{color:var(--dim);}
+.toggle-summary-text{outline:none; display:inline; flex:1; min-width:0;}
+.toggle-rm{flex:0 0 auto; width:18px; height:18px; border:none; background:none; color:var(--dim); font-size:14px;
+  cursor:pointer; border-radius:3px; opacity:0;}
+.block-toggle:hover .toggle-rm{opacity:1;}
+.toggle-rm:hover{color:var(--red); background:var(--panel);}
+.toggle-summary-text:empty::before{content:attr(data-placeholder); color:var(--faint);}
+.block-toggle-body{display:block; width:100%; background:none; border:none; border-top:1px solid var(--line2);
+  color:var(--text); font-family:var(--mono); font-size:15px; line-height:1.6; padding:8px 2px 10px; resize:vertical;
+  box-sizing:border-box; min-height:2.4em; outline:none;}
+.block-table-wrap{margin:6px 0;}
+.block-table{border-collapse:collapse; width:100%; font-size:14.5px;}
+.block-table td, .block-table th{border:1px solid var(--line); padding:0; text-align:left; position:relative;}
+.block-table th{background:var(--panel); font-weight:600;}
+.block-table .cell-text{padding:6px 9px; outline:none; min-width:40px;}
+.block-table th.table-add{padding:6px 9px; text-align:center; color:var(--dim); cursor:pointer; width:28px; border-style:dashed;}
+.block-table th.table-add:hover{color:var(--green); border-color:var(--green);}
+.block-table td.table-handle, .block-table th.table-handle{border:none; width:18px; padding:0;}
+.table-rm-col{position:absolute; top:1px; right:1px; width:15px; height:15px; line-height:15px; padding:0;
+  border:none; background:none; color:var(--dim); font-size:12px; cursor:pointer; opacity:0; border-radius:3px;}
+.block-table th:hover .table-rm-col{opacity:1;}
+.table-rm-col:hover{color:var(--red); background:var(--ink);}
+.table-rm-row{width:16px; height:16px; line-height:14px; padding:0; border:1px solid transparent; border-radius:3px;
+  background:none; color:var(--dim); font-size:12px; cursor:pointer; opacity:0;}
+.block-table tr:hover .table-rm-row{opacity:1;}
+.table-rm-row:hover{color:var(--red); border-color:var(--red);}
+.table-foot{display:flex; gap:8px; margin-top:4px;}
+.table-add-row{font-size:12px; color:var(--dim); background:none; border:1px dashed var(--line);
+  border-radius:5px; padding:4px 10px; cursor:pointer;}
+.table-add-row:hover{color:var(--green); border-color:var(--green);}
+.table-rm-all{font-size:12px; color:var(--dim); background:none; border:1px dashed var(--line);
+  border-radius:5px; padding:4px 10px; cursor:pointer;}
+.table-rm-all:hover{color:var(--red); border-color:var(--red);}
 
 /* draw */
 .drawwrap{flex:1; display:flex; flex-direction:column; min-height:0}
@@ -142,8 +297,14 @@ svg{display:block}
 .szbtn.on{color:var(--text); border-color:var(--blue); background:var(--sel-bg)}
 .toggle{font-size:12px; padding:4px 9px; border-radius:5px; border:1px solid var(--line); color:var(--dim)}
 .toggle.on{color:var(--ink); background:var(--green); border-color:var(--green)}
-/* canvas-scroll scrolls vertically only */
-.canvas-scroll{flex:1; overflow-x:hidden; overflow-y:auto;}
+/* canvas-scroll scrolls vertically only — touch-action:none so a palm landing near the canvas's
+   edge (not exactly on it) can't trigger the browser's own native scroll, which used to fight
+   with the manual JS scroll below and feel like the page randomly jumping around while writing */
+/* -webkit-touch-callout/user-select: a sustained still touch (a finger resting on the glass while
+   holding the pencil, not moving) is a long-press to iOS regardless of touch-action — without this
+   it pops the native Copy/Share/Look Up/etc. menu and highlights the canvas as "selected" */
+.canvas-scroll{flex:1; overflow-x:hidden; overflow-y:auto; touch-action:none;
+  -webkit-touch-callout:none; -webkit-user-select:none; user-select:none;}
 /* canvas-wrap holds two stacked canvases — base (committed strokes) and live (current stroke only) */
 .canvas-wrap{position:relative;}
 .canvas{display:block; touch-action:none; cursor:crosshair;
@@ -178,6 +339,17 @@ svg{display:block}
   .side.open{transform:translateX(0)}
   .scrim{display:block; position:absolute; inset:0; z-index:10; background:rgba(0,0,0,.45)}
   .bar .tab{padding:5px 9px}
+  /* the biggest space hogs on a narrow phone: "~/notes ❯" is decorative and the tab buttons'
+     full "nsert"/"raw" words aren't needed next to the key letter that's already shown — trimming
+     both is what actually keeps the icon row (new/search/theme/logout) on-screen without scrolling */
+  .prompt .path, .prompt .sig, .bar .tabword{display:none}
+  .bar{gap:3px; padding-left:8px; padding-right:8px}
+  .iconbtn{width:26px; height:26px}
+}
+/* longer usernames (kriyansi/bhavesh) need a bit more room back — only the very narrowest
+   phones (iPhone SE and similar, ≤380px) still need this on top of the trims above */
+@media (max-width:380px){
+  .prompt .user{font-size:12px}
 }
 @media (prefers-reduced-motion:reduce){
   .cursor,.led-y{animation:none}
@@ -194,7 +366,12 @@ svg{display:block}
     <div class="modal-scrim" id="modalScrim" hidden></div>
     <main class="main" id="main"></main>
   </div>
+  <div class="palette-dropdown" id="paletteDropdown" hidden></div>
   <footer class="status" id="status"></footer>
+  <!-- fallback for openLocalFile() on Safari/Firefox, which don't implement the File System
+       Access API (showOpenFilePicker) — a plain file input works in every browser -->
+  <input type="file" id="lfInput" hidden
+    accept=".py,.sh,.js,.ts,.json,.md,.txt,.yml,.yaml,.toml,.c,.cpp,.h,.go,.rs,.html,.css,.rb,.java,text/plain">
 </div>
 
 <script>
@@ -221,6 +398,7 @@ const ICONS = {
   logout: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',
   sun: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>',
   moon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>',
+  search: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>',
 };
 
 /* ---- theme (light / dark) ---- */
@@ -238,14 +416,72 @@ function currentTheme() { return document.documentElement.getAttribute("data-the
 /* ---- state ---- */
 let notes = [];        // [{id,title,updated,hasInk,parent}]
 let activeId = null;
-let expanded = new Set(); // note IDs whose children are visible in the sidebar
+let backlinksData = []; // [{id,title}] — notes that [[link]] to the currently open note
+let backlinksCollapsed = false;
+let expanded = new Set(); // note IDs whose children are shown inline (indented underneath) in the sidebar
 let active = null;     // full note {id,title,body,strokes,updated}
 let mode = "normal";   // normal | insert | draw
-let penIdx = 1, sizeIdx = 1, eraserSizeIdx = 1, penOnly = false, penSeen = false, erasing = false; // erasing = are we in eraser mode right now
+// pen-only defaults to true (not false) — palm-rejection needs to be active from the very first
+// touch in the session, before the pencil has ever touched the glass, otherwise a palm set down
+// before the pencil arrives draws/scrolls/clicks like any other touch. Persisted per device like theme.
+let penIdx = 1, sizeIdx = 1, eraserSizeIdx = 1, penOnly = readPenOnly(), penSeen = false, erasing = false; // erasing = are we in eraser mode right now
+function readPenOnly() { try { return localStorage.getItem("glyph:penOnly") !== "0"; } catch (e) { return true; } }
+function setPenOnly(v) { penOnly = v; try { localStorage.setItem("glyph:penOnly", v ? "1" : "0"); } catch (e) {} }
 let saveStatus = "saved";
 let saveTimer = null;
 let ME = "";           // logged-in username, fetched from /api/me at boot
 let lastTyped = 0; // timestamp of last local keystroke — used to avoid clobbering in-progress typing during sync
+let markerOn = false;  // highlighter mode — translucent, wide strokes (like a real marker over text)
+let strokeRedo = [];   // strokes popped by undo, waiting for redo — cleared on new stroke / note switch
+let curBlockId = null; // block that last had focus — what the keyboard-bar buttons act on
+
+/* ---- text undo/redo ----
+   contenteditable's native undo breaks the moment we re-render blocks (the browser's undo
+   entries point at DOM nodes that no longer exist), so glyph keeps its own history: a stack
+   of whole-body snapshots. Cheap because notes are just strings, and it survives every
+   structural edit (split/merge/move/convert) that native undo chokes on. */
+let undoStack = [], redoStack = [], lastSnapAt = 0;
+
+// called with the body as it was BEFORE an edit. Edits within 700ms of each other get grouped
+// into one undo step (so undo jumps back a burst of typing, not one letter at a time).
+function pushUndo(prevBody) {
+  const now = Date.now();
+  redoStack.length = 0; // any new edit invalidates the redo branch
+  if (undoStack.length && now - lastSnapAt < 700) { lastSnapAt = now; return; }
+  if (undoStack[undoStack.length - 1] === prevBody) { lastSnapAt = now; return; }
+  undoStack.push(prevBody);
+  if (undoStack.length > 200) undoStack.shift();
+  lastSnapAt = now;
+}
+
+function resetHistory() { undoStack = []; redoStack = []; strokeRedo = []; lastSnapAt = 0; }
+
+function doUndo() {
+  if (!active || !undoStack.length) return;
+  redoStack.push(active.body);
+  active.body = undoStack.pop();
+  lastSnapAt = 0; // next edit after an undo always starts a fresh undo step
+  lastTyped = Date.now();
+  scheduleSave();
+  refreshEditorFromBody();
+}
+
+function doRedo() {
+  if (!active || !redoStack.length) return;
+  undoStack.push(active.body);
+  active.body = redoStack.pop();
+  lastSnapAt = 0;
+  lastTyped = Date.now();
+  scheduleSave();
+  refreshEditorFromBody();
+}
+
+// repaint whichever editor is showing after undo/redo replaced active.body wholesale
+function refreshEditorFromBody() {
+  if ($("#blockEditor")) { blocks = parseBlocks(active.body); renderEditorBlocks(); scheduleInkResize(); }
+  else { const ed = $("#ed"); if (ed) ed.value = active.body; }
+  renderStatus();
+}
 
 /* in-progress drawing */
 let drawing = false, cur = null;
@@ -322,6 +558,16 @@ async function loadList() {
 }
 
 async function openNote(id) {
+  if (!discardLocalFileIfNeeded()) return;
+  // blur whatever's focused in the CURRENT note before switching away from it. Without this, the
+  // blur fires later instead — synchronously inside renderMain()'s main.innerHTML replacement,
+  // by which point `active` already points at the NEW note while the block's blur handler
+  // (maybeUpdateTitleFromFirstBlock) still reads the OLD note's blocks[0] and writes the result
+  // onto active.title — silently renaming (and saving!) the new note with the old note's content.
+  // Blurring here instead lets that handler run while active/blocks still consistently belong to
+  // the note being left, which is the correct, harmless case (same as any normal blur).
+  const blockHost = $("#blockEditor");
+  if (blockHost && blockHost.contains(document.activeElement)) document.activeElement.blur();
   try {
     active = await api("GET", "/api/notes/" + encodeURIComponent(id));
     active.strokes = active.strokes || [];
@@ -336,7 +582,39 @@ async function openNote(id) {
   }
   activeId = active.id;
   if (mode === "draw") mode = "normal";
+  backlinksData = [];
+  resetHistory(); // undo history is per-note — never undo note A's edits into note B
+  LC.set("glyph:" + ME + ":last", active.id); // remembered across reloads (see boot)
   renderMain(); renderBar(); renderList(); renderStatus();
+  loadBacklinks(active.id);
+}
+
+async function loadBacklinks(id) {
+  try {
+    const result = await api("GET", "/api/notes/" + encodeURIComponent(id) + "/backlinks");
+    if (activeId !== id) return; // note switched again before this resolved
+    backlinksData = result || [];
+    renderBacklinksPanel();
+  } catch (e) { /* offline or server error — panel just stays empty, not worth surfacing */ }
+}
+
+function renderBacklinksPanel() {
+  const el = $("#backlinksPanel");
+  if (!el) return;
+  if (!backlinksData.length) { el.hidden = true; return; }
+  el.hidden = false;
+  el.classList.toggle("collapsed", backlinksCollapsed);
+  el.innerHTML =
+    '<div class="backlinks-head" id="backlinksHead"><span class="tri">▾</span>' +
+      backlinksData.length + (backlinksData.length === 1 ? " note links here" : " notes link here") +
+    "</div>" +
+    '<ul class="backlinks-list">' +
+      backlinksData.map((n) => '<li data-id="' + esc(n.id) + '">' + esc(n.title) + "</li>").join("") +
+    "</ul>";
+  $("#backlinksHead").onclick = () => { backlinksCollapsed = !backlinksCollapsed; renderBacklinksPanel(); };
+  el.querySelectorAll(".backlinks-list li").forEach((li) => {
+    li.onclick = () => openNote(li.getAttribute("data-id"));
+  });
 }
 
 function scheduleSave() {
@@ -346,35 +624,282 @@ function scheduleSave() {
   lcMarkPending(active.id);
   saveStatus = "saving"; renderStatus();
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(async () => {
-    try {
-      const saved = await api("PUT", "/api/notes/" + encodeURIComponent(active.id),
-        { title: active.title, body: active.body, strokes: active.strokes || [], parent: active.parent || null });
-      active.id = saved.id; activeId = saved.id; active.title = saved.title; active.updated = saved.updated;
-      lcSaveNote(active); lcClearPending(active.id);
-      saveStatus = "saved"; setOnline(true); renderStatus(); renderBar();
-      loadList();
-    } catch(e) {
-      setOnline(false);
-      saveStatus = "offline"; renderStatus(); // show as offline, not error
-    }
-  }, 650);
+  saveTimer = setTimeout(saveNow, 650);
 }
 
-async function newNote(parentId) {
+// the actual PUT — normally fired by scheduleSave's debounce timer, but Cmd/Ctrl-S
+// calls it directly to flush the pending save right now instead of waiting 650ms
+async function saveNow() {
+  if (!active) return;
+  clearTimeout(saveTimer);
+  try {
+    const saved = await api("PUT", "/api/notes/" + encodeURIComponent(active.id),
+      { title: active.title, body: active.body, strokes: active.strokes || [], parent: active.parent || null });
+    active.id = saved.id; activeId = saved.id; active.title = saved.title; active.updated = saved.updated;
+    lcSaveNote(active); lcClearPending(active.id);
+    saveStatus = "saved"; setOnline(true); renderStatus(); renderBar();
+    loadList();
+  } catch(e) {
+    setOnline(false);
+    saveStatus = "offline"; renderStatus(); // show as offline, not error
+  }
+}
+
+async function newNote(parentId, tpl) {
+  if (!discardLocalFileIfNeeded()) return;
+  // blur whatever triggered this (usually the "+ new note" button) right away — newNote() doesn't
+  // move focus into the new note until after two awaited network round-trips below, and a focused
+  // <button> natively re-fires its click on every Space/Enter keystroke typed in that gap. Without
+  // this, typing immediately after clicking "+ new note" (completely normal behavior) spams out
+  // duplicate notes, one per space/enter typed before the real note finishes opening.
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   parentId = parentId || null;
   const id = uid();
-  active = { id, title: "untitled", body: "", strokes: [], updated: Date.now(), parent: parentId };
+  // template bodies are functions when they depend on today's date (planners, calendars)
+  const title = tpl ? tpl.name : "untitled";
+  const body = tpl ? (typeof tpl.body === "function" ? tpl.body() : tpl.body) : "";
+  active = { id, title, body, strokes: [], updated: Date.now(), parent: parentId };
   activeId = id;
   mode = "insert";
+  resetHistory();
   lcSaveNote(active); lcMarkPending(id);
+  LC.set("glyph:" + ME + ":last", id);
   // add to local list so sidebar shows it immediately even if offline
-  notes = [{ id, title: "untitled", updated: active.updated, parent: parentId }, ...notes];
-  if (parentId) expanded.add(parentId); // open the parent so the new child is visible
-  try { await api("PUT", "/api/notes/" + id, { title: "untitled", body: "", strokes: [], parent: parentId }); lcClearPending(id); } catch(e) { setOnline(false); }
+  notes = [{ id, title, updated: active.updated, parent: parentId }, ...notes];
+  if (parentId) expanded.add(parentId); // open the parent inline so the new child is visible
+  try {
+    // capture the server's `updated` (seconds) and overwrite the Date.now() (ms) placeholder above —
+    // pollActiveNote() compares fresh.updated <= active.updated directly, so leaving the ms value in
+    // place would make it look like this note is always "newer" than anything the server reports,
+    // silently swallowing live-sync updates from another device until the first autosave fixes it
+    const saved = await api("PUT", "/api/notes/" + id, { title, body, strokes: [], parent: parentId });
+    active.updated = saved.updated;
+    lcSaveNote(active);
+    lcClearPending(id);
+  } catch(e) { setOnline(false); }
   await loadList();
   renderMain(); renderBar(); renderStatus(); closeSidebar();
   focusEditor();
+}
+
+// full copy of the current note (body + ink) as a new sibling note — "title copy"
+async function duplicateNote() {
+  if (!active) return;
+  const id = uid();
+  const copy = { id, title: (active.title || "untitled") + " copy", body: active.body,
+    strokes: active.strokes || [], updated: Date.now(), parent: active.parent || null };
+  lcSaveNote(copy); lcMarkPending(id);
+  notes = [{ id, title: copy.title, updated: copy.updated, parent: copy.parent }, ...notes];
+  try {
+    const saved = await api("PUT", "/api/notes/" + id,
+      { title: copy.title, body: copy.body, strokes: copy.strokes, parent: copy.parent });
+    copy.updated = saved.updated;
+    lcSaveNote(copy); lcClearPending(id);
+  } catch (e) { setOnline(false); }
+  await loadList();
+  await openNote(id).catch(() => {});
+}
+
+// downloads the current note as a plain .md file — works everywhere (same Blob trick
+// saveLocalFile() already uses for its Safari/Firefox path)
+function downloadNoteMd() {
+  if (!active) return;
+  const blob = new Blob([active.body || ""], { type: "text/markdown" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = (active.title || "note").replace(/[\\/:*?"<>|]/g, "_") + ".md";
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/* ---- templates ----
+   Prebuilt note bodies in plain markdown, all made of block types the editor already
+   understands (headings, todos, tables) — so a "money planner" is just a note, editable
+   like any other, synced like any other, and it opens fine in Obsidian too. */
+function todayStr() { return new Date().toDateString().toLowerCase(); }
+
+// generates a real pipe-table calendar for any month — days laid out Monday-first,
+// blank cells pad the first and last weeks like a paper calendar
+function monthCalendarMarkdown(d) {
+  d = d || new Date();
+  const y = d.getFullYear(), m = d.getMonth();
+  const monthName = d.toLocaleString("en", { month: "long" }).toLowerCase();
+  const days = new Date(y, m + 1, 0).getDate();     // day 0 of next month = last day of this one
+  const startCol = (new Date(y, m, 1).getDay() + 6) % 7; // getDay() is Sunday-first; shift to Monday-first
+  const names = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+  const rows = [];
+  let week = new Array(7).fill(" ");
+  for (let day = 1; day <= days; day++) {
+    const col = (startCol + day - 1) % 7;
+    week[col] = String(day);
+    if (col === 6 || day === days) { rows.push(week); week = new Array(7).fill(" "); }
+  }
+  return "## " + monthName + " " + y + "\n\n" +
+    ["| " + names.join(" | ") + " |",
+     "| " + names.map(() => "---").join(" | ") + " |",
+     ...rows.map((r) => "| " + r.join(" | ") + " |")].join("\n");
+}
+
+const TEMPLATES = [
+  { name: "daily planner", body: () =>
+    "# " + todayStr() + "\n\n## top 3\n\n- [ ] \n- [ ] \n- [ ] \n\n## schedule\n\n" +
+    "| time | plan |\n| --- | --- |\n| 06:00 |  |\n| 09:00 |  |\n| 12:00 |  |\n| 15:00 |  |\n| 18:00 |  |\n| 21:00 |  |\n\n## notes\n" },
+  { name: "weekly planner", body: () =>
+    "# week of " + todayStr() + "\n\n" +
+    ["mon", "tue", "wed", "thu", "fri", "sat", "sun"].map((d) => "## " + d + "\n\n- [ ] ").join("\n\n") +
+    "\n\n## wins this week\n" },
+  { name: "monthly calendar", body: () => "# calendar\n\n" + monthCalendarMarkdown() },
+  { name: "money planner", body: () =>
+    "# money — " + new Date().toLocaleString("en", { month: "long" }).toLowerCase() + " " + new Date().getFullYear() +
+    "\n\n## income\n\n| source | amount |\n| --- | --- |\n| salary |  |\n| other |  |\n\n" +
+    "## fixed expenses\n\n| item | budget | actual |\n| --- | --- | --- |\n| rent |  |  |\n| internet |  |  |\n| subscriptions |  |  |\n| food |  |  |\n\n" +
+    "## spending log\n\n| date | what | amount |\n| --- | --- | --- |\n|  |  |  |\n\n" +
+    "## summary\n\n- income total: \n- spent total: \n- saved: " },
+  { name: "habit tracker", body: () =>
+    "# habits — week of " + todayStr() + "\n\n" +
+    "| habit | mon | tue | wed | thu | fri | sat | sun |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n" +
+    "| sleep by 12 |  |  |  |  |  |  |  |\n| workout |  |  |  |  |  |  |  |\n| no junk food |  |  |  |  |  |  |  |\n| read 20 min |  |  |  |  |  |  |  |" },
+  { name: "goal tracker", body:
+    "# goals\n\n## this month\n\n- [ ] \n- [ ] \n\n## this quarter\n\n- [ ] \n- [ ] \n\n## this year\n\n- [ ] \n- [ ] \n\n## someday\n\n- " },
+  { name: "project tracker", body:
+    "# project\n\n> what does done look like?\n\n## tasks\n\n| task | status | due |\n| --- | --- | --- |\n|  | todo |  |\n|  | doing |  |\n\n## next up\n\n- [ ] \n\n## log\n\n- " },
+  { name: "reading list", body:
+    "# reading list\n\n| title | author | status |\n| --- | --- | --- |\n|  |  | to read |\n\n## notes\n" },
+  { name: "meal planner", body:
+    "# meals this week\n\n| day | breakfast | lunch | dinner |\n| --- | --- | --- | --- |\n| mon |  |  |  |\n| tue |  |  |  |\n| wed |  |  |  |\n| thu |  |  |  |\n| fri |  |  |  |\n| sat |  |  |  |\n| sun |  |  |  |\n\n## grocery list\n\n- [ ] " },
+  { name: "workout log", body: () =>
+    "# workouts\n\n## " + todayStr() + "\n\n| exercise | sets | reps | weight |\n| --- | --- | --- | --- |\n|  |  |  |  |\n\n## notes\n" },
+];
+
+/* ---- local files ----
+   Completely separate from the notes vault: opens/saves a real file on disk from the browser.
+   Two paths depending on what the browser supports:
+   - Chrome/Brave/Edge (File System Access API): a real handle to the original file, so "save"
+     overwrites it in place — same as any native editor.
+   - Safari/Firefox (no such API — a WebKit/Gecko platform limitation, not something a web page
+     can work around): open still works via a plain <input type="file">, but there's no way for
+     a browser to write back to an arbitrary path the user picked, so "save" instead downloads an
+     updated copy under the same filename. localFile.handle is null on this path — that's the flag
+     renderLocalFileView() and saveLocalFile() branch on. */
+
+function discardLocalFileIfNeeded() {
+  if (!localFile || !localFile.dirty) { localFile = null; return true; }
+  if (confirm("Discard unsaved changes to " + localFile.name + "?")) { localFile = null; return true; }
+  return false;
+}
+
+async function openLocalFile() {
+  if (!discardLocalFileIfNeeded()) return;
+  if (!window.showOpenFilePicker) { $("#lfInput").click(); return; } // Safari/Firefox fallback
+  let handle;
+  try {
+    [handle] = await window.showOpenFilePicker({
+      types: [{
+        description: "Text and code files",
+        accept: { "text/plain": [".py", ".sh", ".js", ".ts", ".json", ".md", ".txt", ".yml", ".yaml", ".toml", ".c", ".cpp", ".h", ".go", ".rs", ".html", ".css", ".rb", ".java"] },
+      }],
+      excludeAcceptAllOption: false,
+    });
+  } catch (e) { return; } // user cancelled the picker — not an error
+  const file = await handle.getFile();
+  const content = await file.text();
+  localFile = { handle, name: file.name, content, dirty: false };
+  active = null; activeId = null; // local-file view replaces the note view, not layered on top of it
+  renderLocalFileView();
+  renderBar();
+  renderList(); // sidebar's "sync to glyph" row only shows while a file is open
+}
+
+// wired once at startup — fires when the fallback <input type="file"> picker (Safari/Firefox) resolves
+$("#lfInput").addEventListener("change", async () => {
+  const file = $("#lfInput").files[0];
+  $("#lfInput").value = ""; // reset so picking the same file again still fires change next time
+  if (!file) return;
+  const content = await file.text();
+  localFile = { handle: null, name: file.name, content, dirty: false };
+  active = null; activeId = null;
+  renderLocalFileView();
+  renderBar();
+  renderList();
+});
+
+function renderLocalFileView() {
+  const main = $("#main");
+  main.innerHTML =
+    '<div class="localfile-bar">' +
+      '<span class="localfile-name" id="lfName"></span>' +
+      '<div class="spacer"></div>' +
+      (localFile.handle ? "" : '<span class="localfile-hint hide-sm">no write access in this browser — saves as a download</span>') +
+      '<button class="ghost sm" id="lfSync" title="Copy this file\'s current content into a new note in your vault">sync to notes</button>' +
+      '<button class="ghost sm" id="lfSave">' + (localFile.handle ? "save" : "download") + '</button>' +
+      '<button class="ghost sm" id="lfClose">close</button>' +
+    '</div>' +
+    '<textarea class="editor" id="lfEditor" spellcheck="false"></textarea>';
+  paintLocalFileBar();
+  const ta = $("#lfEditor");
+  ta.value = localFile.content;
+  ta.addEventListener("input", () => { localFile.content = ta.value; localFile.dirty = true; paintLocalFileBar(); });
+  $("#lfSave").onclick = saveLocalFile;
+  $("#lfSync").onclick = syncLocalFileToNote;
+  $("#lfClose").onclick = () => { if (discardLocalFileIfNeeded()) { renderMain(); renderBar(); renderList(); } };
+  ta.focus();
+}
+
+// one-time copy, not a live/continuing sync — there's no ongoing link back to the file on disk
+// afterward, same limitation saveLocalFile() has on Safari/Firefox (no filesystem write access
+// to keep them in agreement over time). This just gets the file's current content into the vault
+// as a real note, so it's on every device and can be edited like any other note from then on.
+async function syncLocalFileToNote() {
+  if (!localFile) return;
+  const btn = $("#lfSync");
+  if (btn) { btn.disabled = true; btn.textContent = "syncing…"; }
+  const name = localFile.name, content = localFile.content;
+  try {
+    const id = uid();
+    const saved = await api("PUT", "/api/notes/" + id, { title: name, body: content, strokes: [], parent: null });
+    localFile = null; // the note is the new source of truth — leave the local-file session behind
+    active = { ...saved, strokes: [] };
+    activeId = saved.id;
+    await loadList();
+    renderMain(); renderBar(); renderStatus();
+  } catch (e) {
+    alert("Couldn't sync " + name + " to notes: " + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = "sync to notes"; }
+  }
+}
+
+function paintLocalFileBar() {
+  const el = $("#lfName");
+  if (el) el.textContent = localFile.name + (localFile.dirty ? " •" : "");
+}
+
+async function saveLocalFile() {
+  if (!localFile) return;
+  const btn = $("#lfSave");
+  if (localFile.handle) {
+    if (btn) { btn.disabled = true; btn.textContent = "saving…"; }
+    try {
+      const writable = await localFile.handle.createWritable();
+      await writable.write(localFile.content);
+      await writable.close();
+      localFile.dirty = false;
+      paintLocalFileBar();
+    } catch (e) {
+      alert("Couldn't save " + localFile.name + ": " + e.message);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = "save"; }
+    }
+    return;
+  }
+  // no filesystem write access here — download an updated copy under the same name instead
+  const blob = new Blob([localFile.content], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = localFile.name;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  localFile.dirty = false;
+  paintLocalFileBar();
 }
 
 async function removeNote(id) {
@@ -385,23 +910,61 @@ async function removeNote(id) {
   else { renderMain(); renderBar(); renderStatus(); }
 }
 
+// full ancestor path for the active note, e.g. "Project X ❯ Sub note" for a nested note —
+// not just its own title, so the top bar reflects how deep it's actually nested (reads as a
+// continuation of the "~/notes ❯" prompt right before it)
+function activeBreadcrumb() {
+  if (!active) return "";
+  const chain = [active.title || "untitled"];
+  let parentId = active.parent || null;
+  let hops = 0;
+  while (parentId && hops <= notes.length) {
+    const p = notes.find((n) => n.id === parentId);
+    if (!p) break;
+    chain.unshift(p.title || "untitled");
+    parentId = p.parent || null;
+    hops++;
+  }
+  return chain.join(" ❯ ");
+}
+
 /* ---- render: bar ---- */
 function renderBar() {
   $("#bar").innerHTML =
     '<button class="iconbtn only-mobile" id="menuBtn" aria-label="Notes">' + ICONS.menu + '</button>' +
     '<span class="prompt"><img class="brandmark" src="/icons/192.png" alt=""><span class="user">' + esc(ME) + '@glyph</span><span class="path"> ~/notes </span><span class="sig">&#10095;</span></span>' +
-    '<span class="file">' + (active ? esc(active.title) : "&mdash;") + '</span>' +
+    '<span class="file">' + (active ? esc(activeBreadcrumb()) : "&mdash;") + '</span>' +
     '<div class="spacer"></div>' +
-    '<button class="tab ' + (mode === "insert" ? "on" : "") + '" id="tabI"><span class="key">i</span>nsert</button>' +
-    '<button class="tab ' + (mode === "draw" ? "on" : "") + '" id="tabD"><span class="key">d</span>raw</button>' +
+    // sits between two flex:1 spacers, so it lands in the middle of whatever room is left between
+    // the left (menu/prompt/file) and right (tabs/icons) groups, growing into that space up to
+    // max-width on desktop and shrinking down toward just the icon on a narrow phone. A real,
+    // live-typable input — focusing it drops open a results dropdown anchored right underneath
+    // (see openPalette()), not a centered modal.
+    '<div class="searchbar" id="searchBar">' + ICONS.search +
+      '<input type="text" id="searchBarInput" placeholder="search notes and commands…" autocomplete="off">' +
+    '</div>' +
+    '<div class="spacer"></div>' +
+    '<button class="tab ' + (mode === "insert" ? "on" : "") + '" id="tabI"><span class="key">i</span><span class="tabword">nsert</span></button>' +
+    '<button class="tab ' + (mode === "draw" ? "on" : "") + '" id="tabD"><span class="key">d</span><span class="tabword">raw</span></button>' +
     '<button class="iconbtn" id="newBtn" aria-label="New note" title="New note (o)">' + ICONS.plus + '</button>' +
     '<button class="iconbtn" id="themeBtn" aria-label="Toggle light/dark theme" title="Toggle theme">' +
       (currentTheme() === "dark" ? ICONS.sun : ICONS.moon) + '</button>' +
     '<button class="iconbtn" id="logoutBtn" aria-label="Log out" title="Log out">' + ICONS.logout + '</button>';
   $("#menuBtn").onclick = openSidebar;
-  $("#tabI").onclick = () => { if (active) { mode = "insert"; renderMain(); renderBar(); renderStatus(); focusEditor(); } };
-  $("#tabD").onclick = () => { if (active) { mode = "draw"; renderMain(); renderBar(); renderStatus(); } };
+  $("#tabI").onclick = () => { if (active) setMode("insert"); };
+  $("#tabD").onclick = () => { if (active) setMode("draw"); };
   $("#newBtn").onclick = () => newNote();
+  // clicking anywhere in the pill (icon included) focuses the input; focusing it (by click, by
+  // Tab, or via Cmd/Ctrl-K below) opens the results dropdown — see openPalette()
+  const searchInput = $("#searchBarInput");
+  $("#searchBar").onclick = () => searchInput.focus();
+  searchInput.onfocus = openPalette;
+  searchInput.oninput = () => renderPaletteResults(searchInput.value);
+  searchInput.onkeydown = (e) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); paletteSel = Math.min(paletteSel + 1, paletteFiltered.length - 1); paintPaletteSelection(); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); paletteSel = Math.max(paletteSel - 1, 0); paintPaletteSelection(); }
+    else if (e.key === "Enter") { e.preventDefault(); runPaletteItem(paletteSel); }
+  };
   $("#themeBtn").onclick = () => { applyTheme(currentTheme() === "dark" ? "light" : "dark"); renderBar(); };
   $("#logoutBtn").onclick = () => logout();
 }
@@ -414,20 +977,36 @@ async function logout() {
 /* ---- render: sidebar (tree) ---- */
 
 // builds a nested tree from the flat notes array using the parent field
-function buildTree(notes) {
+// true if walking up `startId`'s parent chain ever reaches `id` — used to stop a note
+// from nesting under its own descendant, which would wall it (and its cycle-mates) off
+// from every root and make them silently vanish from the sidebar. Server-side write_note
+// already refuses to create these, but notes are plain markdown files that can be hand-edited
+// (e.g. via Obsidian), so the client stays defensive too — bounded by note count in case a
+// cycle already exists on disk.
+function isDescendantOf(byId, id, startId) {
+  let cur = startId, hops = 0;
+  while (cur && hops <= Object.keys(byId).length) {
+    if (cur === id) return true;
+    cur = byId[cur] && byId[cur].parent;
+    hops++;
+  }
+  return false;
+}
+
+function buildTree(notesList) {
   const byId = {};
-  notes.forEach(n => { byId[n.id] = { ...n, children: [] }; });
+  notesList.forEach(n => { byId[n.id] = { ...n, children: [] }; });
   const roots = [];
-  notes.forEach(n => {
-    if (n.parent && byId[n.parent]) byId[n.parent].children.push(byId[n.id]);
+  notesList.forEach(n => {
+    if (n.parent && byId[n.parent] && !isDescendantOf(byId, n.id, n.parent)) byId[n.parent].children.push(byId[n.id]);
     else roots.push(byId[n.id]);
   });
-  const sort = arr => { arr.sort((a, b) => b.updated - a.updated); arr.forEach(n => sort(n.children)); };
-  sort(roots);
+  const sortFn = arr => { arr.sort((a, b) => b.updated - a.updated); arr.forEach(n => sortFn(n.children)); };
+  sortFn(roots);
   return roots;
 }
 
-// walk up the ancestor chain and add each ancestor to expanded so the active note is visible
+// walk up the ancestor chain and add each ancestor to expanded so the active note stays visible
 function expandToActive() {
   if (!activeId) return;
   const parentOf = {};
@@ -436,23 +1015,24 @@ function expandToActive() {
   while (parentOf[id]) { id = parentOf[id]; expanded.add(id); }
 }
 
-// recursively renders tree nodes as <li> elements; depth controls the left indent
-function renderTreeNodes(nodes, depth) {
-  return nodes.map(n => {
+// recursively renders tree nodes as <li> elements; depth controls the left indent. Notes with
+// children get a plain ▸/▾ arrow to expand them inline (right underneath, indented) — no separate
+// screen, no navigating away — closer to a real folder tree than a drill-down file browser.
+function renderTreeNodes(nodesArr, depth) {
+  return nodesArr.map(n => {
     const sel = n.id === activeId;
     const hasKids = n.children.length > 0;
     const isOpen = expanded.has(n.id);
-    const pl = 8 + depth * 14; // 14px per level
-    // nodes with children get an expand/collapse triangle; leaves get a fixed-width spacer (active ones show \u25B8)
+    const pl = 8 + depth * 16;
     const toggle = hasKids
-      ? '<button class="tree-tog" data-tog="' + esc(n.id) + '">' + (isOpen ? "\u25BE" : "\u25B8") + "</button>"
-      : '<span class="tree-leaf">' + (sel ? "\u25B8" : " ") + "</span>";
+      ? '<button class="tree-tog" data-tog="' + esc(n.id) + '">' + (isOpen ? "▾" : "▸") + "</button>"
+      : '<span class="tree-leaf"></span>';
     return (
       '<li class="row' + (sel ? " sel" : "") + '" data-id="' + esc(n.id) + '" style="padding-left:' + pl + 'px">' +
         toggle +
         '<span class="name">' + esc(n.title || "untitled") + "</span>" +
-        (n.hasInk ? '<span class="ink" title="has a sketch">\u2726</span>' : "") +
-        '<button class="addchild" data-par="' + esc(n.id) + '" aria-label="New child note" title="New child note">+</button>' +
+        (n.hasInk ? '<span class="ink" title="has a sketch">✦</span>' : "") +
+        '<button class="addchild" data-par="' + esc(n.id) + '" aria-label="New note inside" title="New note inside">+</button>' +
         '<button class="del" data-del="' + esc(n.id) + '" aria-label="Delete note">' + ICONS.trash + "</button>" +
       "</li>" +
       (hasKids && isOpen ? renderTreeNodes(n.children, depth + 1) : "")
@@ -465,17 +1045,24 @@ function toggleExpand(id) {
   renderList();
 }
 
+let sideMoreOpen = false; // whether the bottom-left "more" section (privacy/contact/delete account) is expanded
+
 function renderList() {
   expandToActive();
   const rows = renderTreeNodes(buildTree(notes), 0);
   $("#side").innerHTML =
     '<div class="side-head"><span>ls ~/notes</span>' +
     '<button class="iconbtn only-mobile" id="closeSide" aria-label="Close">' + ICONS.x + "</button></div>" +
-    '<ul class="list">' + (rows || '<li class="row"><span class="name" style="color:var(--dim)">empty vault</span></li>') + "</ul>" +
+    '<ul class="list">' + (rows || '<li class="empty-folder">no notes yet<br>tap + new note below to start</li>') + "</ul>" +
     '<button class="newrow" id="newRow">+ new note</button>' +
-    '<a class="newrow" href="/legal" target="_blank" rel="noopener" style="font-size:11px; text-decoration:none; display:block; border-top:none;">privacy &amp; terms</a>' +
-    '<a class="newrow" href="/contact" target="_blank" rel="noopener" style="font-size:11px; text-decoration:none; display:block; border-top:none;">contact</a>' +
-    '<button class="newrow danger" id="delAcctRow">delete account</button>';
+    '<button class="newrow" id="openFileRow" title="Open a file from this device">open file</button>' +
+    (localFile ? '<button class="newrow" id="syncGlyphRow" title="Copy the open file into a new note">sync to glyph</button>' : "") +
+    '<button class="newrow" id="moreToggle">' + (sideMoreOpen ? "▾" : "▸") + ' more</button>' +
+    (sideMoreOpen ?
+      '<a class="newrow sub" href="/legal" target="_blank" rel="noopener">privacy &amp; terms</a>' +
+      '<a class="newrow sub" href="/contact" target="_blank" rel="noopener">contact</a>' +
+      '<button class="newrow danger" id="delAcctRow">delete account</button>'
+    : "");
   // single delegated listener handles all interactions in the tree
   $("#side").querySelector(".list").addEventListener("click", (e) => {
     const tog = e.target.closest("[data-tog]");
@@ -488,7 +1075,10 @@ function renderList() {
     if (row) { openNote(row.getAttribute("data-id")); closeSidebar(); }
   });
   $("#newRow").onclick = () => newNote();
-  $("#delAcctRow").onclick = openDeleteAccountModal;
+  $("#openFileRow").onclick = () => openLocalFile();
+  const syncRow = $("#syncGlyphRow"); if (syncRow) syncRow.onclick = () => syncLocalFileToNote();
+  $("#moreToggle").onclick = () => { sideMoreOpen = !sideMoreOpen; renderList(); };
+  const delBtn = $("#delAcctRow"); if (delBtn) delBtn.onclick = openDeleteAccountModal;
   const cs = $("#closeSide"); if (cs) cs.onclick = closeSidebar;
 }
 
@@ -551,41 +1141,1289 @@ function openDeleteAccountModal() {
   };
 }
 
+/* ---- command palette ---- */
+// subsequence fuzzy match: every char of query must appear in target, in order.
+// score rewards matches that start at a word boundary and matches with fewer gaps.
+function fuzzyScore(query, target) {
+  query = query.toLowerCase();
+  target = target.toLowerCase();
+  if (!query) return 0;
+  let qi = 0, score = 0, lastMatch = -1;
+  for (let ti = 0; ti < target.length && qi < query.length; ti++) {
+    if (target[ti] === query[qi]) {
+      const boundary = ti === 0 || /[\s\-_/]/.test(target[ti - 1]);
+      score += boundary ? 10 : (lastMatch === ti - 1 ? 5 : 1);
+      lastMatch = ti;
+      qi++;
+    }
+  }
+  return qi === query.length ? score : -1; // -1 = not a match at all
+}
+
+// notes[] is already sorted most-recently-updated-first (server-side, see list_meta()), so
+// "recent notes" here is just "all notes, in the order they already come in" — no extra sort needed
+function paletteItemGroups() {
+  const noteItems = notes.map((n) => ({
+    kind: "note", label: n.title, run: () => { openNote(n.id); closeSidebar(); },
+  }));
+  const actionItems = [
+    { kind: "new", label: "new note", run: () => newNote() },
+    { kind: "action", label: active ? (mode === "draw" ? "switch to write mode" : "switch to draw mode") : "open a note to draw",
+      run: () => { if (!active) return; setMode(mode === "draw" ? "insert" : "draw"); } },
+    { kind: "action", label: "undo", run: () => doUndo() },
+    { kind: "action", label: "redo", run: () => doRedo() },
+    { kind: "action", label: "duplicate current note", run: () => duplicateNote() },
+    { kind: "action", label: "download note as .md", run: () => downloadNoteMd() },
+    { kind: "action", label: "keyboard shortcuts", run: () => openShortcutHelp() },
+    { kind: "action", label: currentTheme() === "dark" ? "switch to light theme" : "switch to dark theme",
+      run: () => { applyTheme(currentTheme() === "dark" ? "light" : "dark"); renderBar(); } },
+    { kind: "beta", label: blockEditorEnabled() ? "disable block editor (beta)" : "enable block editor (beta)",
+      run: () => { setBlockEditorEnabled(!blockEditorEnabled()); if (active && mode !== "draw") renderMain(); } },
+    { kind: "insert", label: "insert table", run: () => { if (blockEditorEnabled()) insertBlockAtEnd({ id: uid(), type: "table", header: ["a", "b"], rows: [["", ""]] }); } },
+    { kind: "insert", label: "insert toggle", run: () => { if (blockEditorEnabled()) insertBlockAtEnd({ id: uid(), type: "toggle", text: "", body: "" }); } },
+    { kind: "insert", label: "insert divider", run: () => { if (blockEditorEnabled()) insertBlockAtEnd({ id: uid(), type: "hr" }); } },
+    { kind: "insert", label: "insert calendar (this month)", run: () => {
+      if (blockEditorEnabled() && active) { parseBlocks(monthCalendarMarkdown()).forEach((b) => blocks.push(b)); syncBody(); renderEditorBlocks(); scheduleInkResize(); } } },
+    { kind: "file", label: "open local file…", run: () => openLocalFile() },
+    { kind: "danger", label: "delete current note", run: () => { if (active) removeNote(active.id); } },
+    { kind: "danger", label: "log out", run: () => logout() },
+  ];
+  // every template as a searchable "new X" entry — typing "money" finds "new money planner"
+  const templateItems = TEMPLATES.map((t) => ({ kind: "tpl", label: "new " + t.name, run: () => newNote(null, t) }));
+  return { noteItems, actionItems, templateItems };
+}
+
+let paletteSel = 0;
+let paletteFiltered = [];
+// collapsed by default the first time? no — defaults open (like recent notes being useful out of
+// the box), but remembers your choice per device once you collapse it, same pattern as theme/penOnly
+let paletteRecentCollapsed = readPaletteRecentCollapsed();
+function readPaletteRecentCollapsed() { try { return localStorage.getItem("glyph:paletteRecentCollapsed") === "1"; } catch (e) { return false; } }
+function setPaletteRecentCollapsed(v) { paletteRecentCollapsed = v; try { localStorage.setItem("glyph:paletteRecentCollapsed", v ? "1" : "0"); } catch (e) {} }
+
+// positions the dropdown under #searchBar's actual on-screen rect (it's not inside any element
+// with its own positioning context, so this has to be computed in JS, not pure CSS) and (re)opens
+// it with whatever's currently in the search input, if anything — safe to call repeatedly
+// (e.g. re-entered via the search input's own focus handler) since it's fully idempotent
+function openPalette() {
+  const bar = $("#searchBar");
+  const dropdown = $("#paletteDropdown");
+  if (!bar || !dropdown) return;
+  const rect = bar.getBoundingClientRect();
+  const width = Math.max(rect.width, 280);
+  dropdown.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)) + "px";
+  dropdown.style.top = (rect.bottom + 6) + "px";
+  dropdown.style.width = width + "px";
+  dropdown.innerHTML = '<ul class="palette-list" id="paletteList"></ul>';
+  dropdown.hidden = false;
+  const input = $("#searchBarInput");
+  renderPaletteResults(input.value || "");
+  if (document.activeElement !== input) input.focus(); // guarded: avoids re-firing this via onfocus
+}
+
+function closePalette() {
+  const dropdown = $("#paletteDropdown");
+  if (dropdown) dropdown.hidden = true;
+  const input = $("#searchBarInput");
+  if (input) input.value = "";
+}
+
+function renderPaletteResults(query) {
+  const { noteItems, actionItems, templateItems } = paletteItemGroups();
+  const list = $("#paletteList");
+  if (!list) return;
+  let html = "";
+  if (query) {
+    paletteFiltered = noteItems.concat(actionItems).concat(templateItems)
+      .map((it) => ({ it, score: fuzzyScore(query, it.label) }))
+      .filter((x) => x.score >= 0)
+      .sort((a, b) => b.score - a.score)
+      .map((x) => x.it)
+      .slice(0, 9);
+    html = paletteFiltered.map((it, i) => paletteRowHtml(it, i)).join("");
+  } else {
+    // nothing typed yet — browse mode: recent notes (already in recency order) up top, actions below.
+    // "recent notes" itself is collapsible (see paletteRecentCollapsed) — collapsed items still
+    // don't count toward paletteFiltered/arrow-key nav, they're just not there while hidden
+    const recentAll = noteItems.slice(0, 8);
+    const shownRecent = paletteRecentCollapsed ? [] : recentAll;
+    const actions = actionItems.slice(0, 10);
+    paletteFiltered = shownRecent.concat(actions).concat(templateItems);
+    if (recentAll.length) {
+      html += '<div class="palette-section palette-section-toggle" id="paletteRecentToggle">' +
+        (paletteRecentCollapsed ? "▸" : "▾") + " recent notes</div>";
+      html += shownRecent.map((it, i) => paletteRowHtml(it, i)).join("");
+    }
+    if (actions.length) html += '<div class="palette-section">actions</div>' + actions.map((it, i) => paletteRowHtml(it, shownRecent.length + i)).join("");
+    html += '<div class="palette-section">templates</div>' + templateItems.map((it, i) => paletteRowHtml(it, shownRecent.length + actions.length + i)).join("");
+  }
+  paletteSel = 0;
+  if (!paletteFiltered.length) { list.innerHTML = '<div class="palette-empty">no matches</div>'; return; }
+  list.innerHTML = html;
+  const recentToggle = $("#paletteRecentToggle");
+  if (recentToggle) {
+    recentToggle.addEventListener("mousedown", (e) => e.preventDefault()); // don't blur the input first
+    recentToggle.onclick = () => { setPaletteRecentCollapsed(!paletteRecentCollapsed); renderPaletteResults($("#searchBarInput").value || ""); };
+  }
+  list.querySelectorAll("li").forEach((li) => {
+    li.addEventListener("mousedown", (e) => e.preventDefault()); // don't blur the input before the click below fires
+    li.onclick = () => runPaletteItem(parseInt(li.getAttribute("data-i"), 10));
+  });
+  paintPaletteSelection();
+}
+
+function paletteRowHtml(it, i) {
+  return '<li data-i="' + i + '"><span class="kind">' + it.kind + "</span>" + esc(it.label) + "</li>";
+}
+
+function paintPaletteSelection() {
+  const list = $("#paletteList");
+  if (!list) return;
+  list.querySelectorAll("li").forEach((li, i) => {
+    const isSel = i === paletteSel;
+    li.classList.toggle("sel", isSel);
+    // arrow-key navigation used to only move the highlight — the list itself never scrolled, so
+    // selecting an item below the visible area left you highlighting something you couldn't see
+    if (isSel) li.scrollIntoView({ block: "nearest" });
+  });
+}
+
+function runPaletteItem(i) {
+  const item = paletteFiltered[i];
+  if (!item) return;
+  closePalette();
+  const input = $("#searchBarInput");
+  if (input) input.blur();
+  item.run();
+}
+
+// closes the dropdown on a click anywhere outside it or the search bar itself
+document.addEventListener("click", (e) => {
+  const dropdown = $("#paletteDropdown");
+  const bar = $("#searchBar");
+  if (dropdown && !dropdown.hidden && !dropdown.contains(e.target) && bar && !bar.contains(e.target)) closePalette();
+});
+// don't leave it stale-positioned under the bar across a resize/rotation — cheap to just reopen
+window.addEventListener("resize", () => { const d = $("#paletteDropdown"); if (d && !d.hidden) closePalette(); });
+
+/* ---- [[ ]] link autocomplete ---- */
+let wikiOpen = false;
+let wikiMatches = [];
+let wikiSel = 0;
+let wikiStart = -1; // index of the char right after the triggering "[[" in ed.value
+
+// looks backwards from the caret for an unclosed "[[" on the current line
+function findWikiTrigger(text, caret) {
+  const lineStart = text.lastIndexOf("\n", caret - 1) + 1;
+  const openAt = text.lastIndexOf("[[", caret - 1);
+  if (openAt < lineStart) return -1;
+  const between = text.slice(openAt + 2, caret);
+  if (between.includes("]]") || between.includes("[[") || between.includes("\n")) return -1;
+  return openAt + 2;
+}
+
+function checkWikiTrigger(ed) {
+  const caret = ed.selectionStart;
+  const start = findWikiTrigger(ed.value, caret);
+  if (start === -1) { closeWikiPopup(); return; }
+  wikiStart = start;
+  const query = ed.value.slice(start, caret);
+  wikiMatches = notes
+    .map((n) => ({ n, score: fuzzyScore(query, n.title) }))
+    .filter((x) => x.score >= 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 6)
+    .map((x) => x.n);
+  if (!wikiMatches.length) { closeWikiPopup(); return; }
+  wikiOpen = true;
+  wikiSel = 0;
+  renderWikiPopup(ed);
+}
+
+function renderWikiPopup(ed) {
+  let el = $("#wikiPopup");
+  if (!el) {
+    el = document.createElement("ul");
+    el.id = "wikiPopup";
+    el.className = "wiki-popup";
+    $("#main").appendChild(el);
+  }
+  el.innerHTML = wikiMatches
+    .map((n, i) => '<li data-i="' + i + '" class="' + (i === wikiSel ? "sel" : "") + '">' + esc(n.title) + "</li>")
+    .join("");
+  el.querySelectorAll("li").forEach((li) => {
+    li.onmousedown = (e) => { e.preventDefault(); insertWikiLink(ed, parseInt(li.getAttribute("data-i"), 10)); };
+  });
+}
+
+function paintWikiSelection() {
+  const el = $("#wikiPopup");
+  if (el) el.querySelectorAll("li").forEach((li, i) => li.classList.toggle("sel", i === wikiSel));
+}
+
+function closeWikiPopup() {
+  wikiOpen = false;
+  const el = $("#wikiPopup");
+  if (el) el.remove();
+}
+
+function insertWikiLink(ed, i) {
+  const n = wikiMatches[i];
+  if (!n) return;
+  const caret = ed.selectionStart;
+  const before = ed.value.slice(0, wikiStart);
+  const after = ed.value.slice(caret);
+  const insertion = n.title + "]]";
+  ed.value = before + insertion + after;
+  const newCaret = wikiStart + insertion.length;
+  ed.setSelectionRange(newCaret, newCaret);
+  active.body = ed.value;
+  scheduleSave();
+  closeWikiPopup();
+  ed.focus();
+}
+
+/* ---- block editor (Phase 2) ----
+   On by default now — localStorage["glyph:blockEditor"] = "0" is the explicit opt-out
+   (kept so anyone who already toggled it off during the opt-in beta stays off).
+   active.body (markdown string) stays the one source of truth: blocks[] is always a
+   derived view, reparsed from active.body on every renderMain() call. That's what keeps
+   this safe to bolt onto the existing offline-save/sync machinery unmodified — syncBody()
+   is the only place that writes back into active.body, exactly like ed.value did before. */
+
+const BLOCK_EDITOR_KEY = "glyph:blockEditor";
+function blockEditorEnabled() { try { return localStorage.getItem(BLOCK_EDITOR_KEY) !== "0"; } catch (e) { return true; } }
+function setBlockEditorEnabled(on) { try { localStorage.setItem(BLOCK_EDITOR_KEY, on ? "1" : "0"); } catch (e) {} }
+
+let blocks = []; // in-memory blocks for the currently open note (text mode only)
+let localFile = null; // { handle, name, content, dirty } — a file opened from disk via the
+                       // browser's File System Access API, entirely separate from the notes vault
+
+function splitTableRow(line) {
+  let s = line.trim();
+  if (s.startsWith("|")) s = s.slice(1);
+  if (s.endsWith("|")) s = s.slice(0, -1);
+  return s.split("|").map((c) => c.trim());
+}
+
+// markdown string -> Block[]. Block = {id, type, text, level, checked, indent, header, rows, lang}
+function parseBlocks(md) {
+  const lines = (md || "").split("\n");
+  const out = [];
+  let i = 0;
+  let paraBuf = [];
+  function flushPara() {
+    if (paraBuf.length) { out.push({ id: uid(), type: "p", text: paraBuf.join("\n") }); paraBuf = []; }
+  }
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    if (line.trim() === "") { flushPara(); i++; continue; }
+
+    let m = line.match(/^```(\w*)\s*$/);
+    if (m) {
+      flushPara();
+      const lang = m[1] || "";
+      const body = [];
+      i++;
+      while (i < lines.length && !/^```\s*$/.test(lines[i])) { body.push(lines[i]); i++; }
+      i++; // skip closing fence
+      out.push({ id: uid(), type: "code", text: body.join("\n"), lang });
+      continue;
+    }
+
+    // toggle block: <details><summary>...</summary> ... </details> — valid raw HTML
+    // embedded in markdown, so Obsidian renders it as a real native collapsible section too
+    if (/^<details>\s*$/.test(line)) {
+      flushPara();
+      i++;
+      let summary = "";
+      if (i < lines.length) {
+        const sm = lines[i].match(/^<summary>(.*)<\/summary>\s*$/);
+        if (sm) { summary = sm[1]; i++; }
+      }
+      const body = [];
+      while (i < lines.length && !/^<\/details>\s*$/.test(lines[i])) { body.push(lines[i]); i++; }
+      i++; // skip the closing </details>
+      if (body[0] === "") body.shift();
+      if (body[body.length - 1] === "") body.pop();
+      out.push({ id: uid(), type: "toggle", text: summary, body: body.join("\n") });
+      continue;
+    }
+
+    if (/^\s*\|.*\|\s*$/.test(line) && i + 1 < lines.length && /^\s*\|?[\s:|-]+\|?\s*$/.test(lines[i + 1]) && lines[i + 1].includes("-")) {
+      flushPara();
+      const header = splitTableRow(line);
+      i += 2; // skip header + separator row
+      const rows = [];
+      while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) { rows.push(splitTableRow(lines[i])); i++; }
+      out.push({ id: uid(), type: "table", header, rows });
+      continue;
+    }
+
+    m = line.match(/^(#{1,3})\s+(.*)$/);
+    if (m) { flushPara(); out.push({ id: uid(), type: "h", level: m[1].length, text: m[2] }); i++; continue; }
+
+    if (/^-{3,}\s*$/.test(line)) { flushPara(); out.push({ id: uid(), type: "hr" }); i++; continue; }
+
+    m = line.match(/^(\s*)-\s\[([ xX])\]\s+(.*)$/);
+    if (m) { flushPara(); out.push({ id: uid(), type: "todo", checked: m[2].toLowerCase() === "x", text: m[3], indent: Math.floor(m[1].length / 2) }); i++; continue; }
+
+    m = line.match(/^(\s*)-\s+(.*)$/);
+    if (m) { flushPara(); out.push({ id: uid(), type: "ul", text: m[2], indent: Math.floor(m[1].length / 2) }); i++; continue; }
+
+    m = line.match(/^(\s*)\d+\.\s+(.*)$/);
+    if (m) { flushPara(); out.push({ id: uid(), type: "ol", text: m[2], indent: Math.floor(m[1].length / 2) }); i++; continue; }
+
+    if (/^>\s?/.test(line)) {
+      flushPara();
+      const qlines = [];
+      while (i < lines.length && /^>\s?/.test(lines[i])) { qlines.push(lines[i].replace(/^>\s?/, "")); i++; }
+      out.push({ id: uid(), type: "quote", text: qlines.join("\n") });
+      continue;
+    }
+
+    paraBuf.push(line);
+    i++;
+  }
+  flushPara();
+  if (!out.length) out.push({ id: uid(), type: "p", text: "" });
+  return out;
+}
+
+// Block[] -> markdown string. Verified round-trip stable against a fixture covering every
+// type (see scratchpad/blocktest.js during development) — not byte-identical to arbitrary
+// input formatting, but stable: parse(serialize(parse(x))) always equals parse(serialize(x)).
+function serializeBlocks(list) {
+  const LIST_TYPES = new Set(["ul", "ol", "todo"]);
+  let olN = 0; // running counter so numbered lists serialize as 1. 2. 3., resetting on any non-ol block
+  const lines = list.map((b) => {
+    olN = b.type === "ol" ? olN + 1 : 0;
+    switch (b.type) {
+      case "h": return "#".repeat(b.level) + " " + b.text;
+      case "todo": return "  ".repeat(b.indent || 0) + "- [" + (b.checked ? "x" : " ") + "] " + b.text;
+      case "ul": return "  ".repeat(b.indent || 0) + "- " + b.text;
+      case "ol": return "  ".repeat(b.indent || 0) + olN + ". " + b.text;
+      case "quote": return b.text.split("\n").map((l) => "> " + l).join("\n");
+      case "code": return "```" + (b.lang || "") + "\n" + b.text + "\n```";
+      case "hr": return "---";
+      case "toggle": return "<details>\n<summary>" + (b.text || "") + "</summary>\n\n" + (b.body || "") + "\n\n</details>";
+      case "table": {
+        const header = "| " + b.header.join(" | ") + " |";
+        const sep = "| " + b.header.map(() => "---").join(" | ") + " |";
+        const rows = b.rows.map((r) => "| " + r.join(" | ") + " |");
+        return [header, sep, ...rows].join("\n");
+      }
+      case "p":
+      default:
+        return b.text;
+    }
+  });
+  let out = "";
+  for (let i = 0; i < list.length; i++) {
+    if (i > 0) {
+      const tight = LIST_TYPES.has(list[i].type) && list[i].type === list[i - 1].type;
+      out += tight ? "\n" : "\n\n";
+    }
+    out += lines[i];
+  }
+  return out;
+}
+
+// the one choke point that writes blocks[] back into active.body — everything downstream
+// (scheduleSave, lcSaveNote, syncPending) is completely unchanged from the textarea version.
+// Being the single write path also makes it the perfect place to capture undo snapshots:
+// every edit of any kind (typing, split, merge, move, convert, table edits) passes through here.
+function syncBody() {
+  pushUndo(active.body); // the body as it was BEFORE this edit
+  active.body = serializeBlocks(blocks);
+  lastTyped = Date.now();
+  scheduleSave();
+  scheduleInkResize(); // content height may have changed — grow the ink canvas to match
+}
+
+// debounced — text height changes on almost every keystroke, resizing canvases that often
+// would repaint all strokes constantly for no visible benefit
+let inkResizeTimer = null;
+function scheduleInkResize() {
+  if (!$("#noteScroll")) return;
+  clearTimeout(inkResizeTimer);
+  inkResizeTimer = setTimeout(sizeInkCanvas, 400);
+}
+
+/* ---- caret helpers (Selection/Range API) ---- */
+function getCaretOffset(el) {
+  const sel = window.getSelection();
+  if (!sel.rangeCount) return 0;
+  const range = sel.getRangeAt(0).cloneRange();
+  range.selectNodeContents(el);
+  range.setEnd(sel.getRangeAt(0).endContainer, sel.getRangeAt(0).endOffset);
+  return range.toString().length;
+}
+
+function setCaretOffset(el, pos) {
+  const sel = window.getSelection();
+  const range = document.createRange();
+  let remaining = pos, found = false;
+  (function walk(n) {
+    if (found) return;
+    if (n.nodeType === Node.TEXT_NODE) {
+      if (remaining <= n.length) { range.setStart(n, remaining); found = true; }
+      else remaining -= n.length;
+    } else {
+      for (const child of n.childNodes) { walk(child); if (found) return; }
+    }
+  })(el);
+  if (!found) { range.selectNodeContents(el); range.collapse(false); }
+  else range.collapse(true);
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+// current text selection, as character offsets into el's text — same coordinate
+// space as getCaretOffset/setCaretOffset, just for a non-collapsed range
+function getSelectionRange(el) {
+  const sel = window.getSelection();
+  if (!sel.rangeCount) return { start: 0, end: 0 };
+  const range = sel.getRangeAt(0);
+  const pre = range.cloneRange();
+  pre.selectNodeContents(el);
+  pre.setEnd(range.startContainer, range.startOffset);
+  const start = pre.toString().length;
+  return { start, end: start + range.toString().length };
+}
+
+/* ---- inline formatting: **bold**, *italic*, ~~strikethrough~~, [[links]] ----
+   b.text (raw markdown) stays the source of truth — this only ever renders a display
+   version into a blurred block, or wraps a selection with markdown syntax. When a block
+   is focused for editing it always shows plain b.text (see the focus handler above), so
+   this never has to reconcile edits made inside formatted markup. */
+// group order matters — [[wiki]] before [md](links), **bold** before *italic*, and
+// `code` / ==highlight== before italic so their inner chars never get half-matched
+const INLINE_RE = /\[\[([^\]]+)\]\]|\*\*([^*]+)\*\*|~~([^~]+)~~|`([^`]+)`|==([^=]+)==|\[([^\]]+)\]\(([^)\s]+)\)|\*([^*]+)\*/g;
+
+function renderInlineInto(el, text) {
+  el.innerHTML = "";
+  if (!text) return; // empty — let the :empty::before placeholder show
+  let lastIndex = 0;
+  INLINE_RE.lastIndex = 0;
+  let m;
+  while ((m = INLINE_RE.exec(text))) {
+    if (m.index > lastIndex) el.appendChild(document.createTextNode(text.slice(lastIndex, m.index)));
+    if (m[1] !== undefined) {
+      const title = m[1].trim(); // tolerate [[ title ]] typed by hand with stray spaces —
+                                  // extract_links() on the server already does the same
+      const span = document.createElement("span");
+      span.className = "wiki-link-rendered";
+      span.textContent = title;
+      // mousedown preventDefault stops the click from focusing/placing a caret in the
+      // contenteditable parent first — otherwise the block would flip to raw-edit mode
+      // (via the focus handler) before the click handler below ever got to navigate
+      span.addEventListener("mousedown", (e) => e.preventDefault());
+      span.addEventListener("click", (e) => {
+        e.preventDefault(); e.stopPropagation();
+        const target = notes.find((n) => n.title.toLowerCase() === title.toLowerCase());
+        if (target) openNote(target.id);
+      });
+      el.appendChild(span);
+    } else if (m[2] !== undefined) {
+      const strong = document.createElement("strong");
+      strong.textContent = m[2];
+      el.appendChild(strong);
+    } else if (m[3] !== undefined) {
+      const s = document.createElement("s");
+      s.textContent = m[3];
+      el.appendChild(s);
+    } else if (m[4] !== undefined) {
+      // `inline code` — styled span, still plain text underneath
+      const code = document.createElement("span");
+      code.className = "inline-code";
+      code.textContent = m[4];
+      el.appendChild(code);
+    } else if (m[5] !== undefined) {
+      // ==highlight== — Obsidian's syntax, renders as a real <mark>
+      const mk = document.createElement("mark");
+      mk.textContent = m[5];
+      el.appendChild(mk);
+    } else if (m[6] !== undefined) {
+      // [text](url) markdown link — only http(s) urls become clickable, anything else
+      // (javascript:, data:, …) stays plain text so a pasted note can't smuggle in script
+      const href = m[7];
+      if (/^https?:\/\//i.test(href)) {
+        const a = document.createElement("a");
+        a.className = "md-link";
+        a.textContent = m[6];
+        a.href = href;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.addEventListener("mousedown", (e) => e.preventDefault()); // same trick as wiki links —
+        // don't let the click focus the block (flipping it to raw text) before the link opens
+      el.appendChild(a);
+      } else {
+        el.appendChild(document.createTextNode(m[0]));
+      }
+    } else if (m[8] !== undefined) {
+      const em = document.createElement("em");
+      em.textContent = m[8];
+      el.appendChild(em);
+    }
+    lastIndex = INLINE_RE.lastIndex;
+  }
+  if (lastIndex < text.length) el.appendChild(document.createTextNode(text.slice(lastIndex)));
+}
+
+// Cmd/Ctrl+B/I/Shift+X — wrap the current selection in markdown syntax. No-ops on a
+// collapsed selection (v1 keeps this simple: select text first, then format it).
+function wrapSelectionWith(b, el, wrap) {
+  const { start, end } = getSelectionRange(el);
+  if (start === end) return;
+  const t = b.text || "";
+  b.text = t.slice(0, start) + wrap + t.slice(start, end) + wrap + t.slice(end);
+  el.textContent = b.text;
+  syncBody();
+  setCaretOffset(el, end + wrap.length * 2);
+}
+
+/* ---- block editor: rendering ---- */
+function blockPlaceholder(b) {
+  if (b.type === "h") return "heading";
+  if (b.type === "todo") return "to-do";
+  if (b.type === "quote") return "quote";
+  return "";
+}
+
+function renderBlockEl(b) {
+  if (b.type === "hr") {
+    const hr = document.createElement("hr");
+    hr.className = "block block-hr";
+    hr.dataset.id = b.id;
+    hr.title = "click to remove";
+    hr.onclick = () => removeBlock(b.id);
+    return hr;
+  }
+
+  if (b.type === "code") {
+    const wrap = document.createElement("div");
+    wrap.className = "block-code-wrap";
+    wrap.dataset.id = b.id;
+    const ta = document.createElement("textarea");
+    ta.className = "block-code-ta";
+    ta.value = b.text;
+    ta.spellcheck = false;
+    ta.addEventListener("input", () => { b.text = ta.value; syncBody(); });
+    ta.addEventListener("keydown", (e) => { e.stopPropagation(); }); // let the browser handle Enter/Tab natively inside code
+    ta.addEventListener("focus", () => {
+      if (mode !== "insert") { mode = "insert"; setTimeout(() => { renderBar(); renderStatus(); }, 100); }
+    });
+    wrap.appendChild(ta);
+    return wrap;
+  }
+
+  if (b.type === "toggle") {
+    const details = document.createElement("details");
+    details.className = "block-toggle";
+    details.dataset.id = b.id;
+    details.open = !!b.open;
+    details.addEventListener("toggle", () => { b.open = details.open; });
+
+    const summary = document.createElement("summary");
+    const summaryText = document.createElement("span");
+    summaryText.className = "toggle-summary-text";
+    summaryText.contentEditable = "true";
+    summaryText.textContent = b.text || "";
+    summaryText.setAttribute("data-placeholder", "toggle");
+    summaryText.addEventListener("click", (e) => e.preventDefault()); // click toggles the <details>; only the caret should land in text
+    summaryText.addEventListener("mousedown", (e) => e.stopPropagation());
+    summaryText.addEventListener("input", () => { b.text = summaryText.textContent; syncBody(); });
+    summaryText.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); bodyTa.focus(); }
+      else e.stopPropagation();
+    });
+    summary.appendChild(summaryText);
+
+    const rmToggleBtn = document.createElement("button");
+    rmToggleBtn.type = "button"; rmToggleBtn.className = "toggle-rm"; rmToggleBtn.textContent = "×";
+    rmToggleBtn.title = "remove this toggle";
+    rmToggleBtn.addEventListener("mousedown", (e) => e.stopPropagation()); // don't let it toggle open/closed
+    rmToggleBtn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); removeBlock(b.id); });
+    summary.appendChild(rmToggleBtn);
+    details.appendChild(summary);
+
+    const bodyTa = document.createElement("textarea");
+    bodyTa.className = "block-toggle-body";
+    bodyTa.value = b.body || "";
+    bodyTa.placeholder = "toggle content…";
+    bodyTa.addEventListener("input", () => { b.body = bodyTa.value; syncBody(); });
+    bodyTa.addEventListener("keydown", (e) => e.stopPropagation());
+    details.appendChild(bodyTa);
+
+    return details;
+  }
+
+  if (b.type === "table") {
+    const wrap = document.createElement("div");
+    wrap.className = "block-table-wrap";
+    wrap.dataset.id = b.id;
+    const table = document.createElement("table");
+    table.className = "block-table";
+
+    const thead = document.createElement("tr");
+    thead.appendChild(document.createElement("th")).className = "table-handle"; // empty corner
+    b.header.forEach((cell, c) => {
+      const th = makeTableCell(b, -1, c, cell, true);
+      const rm = document.createElement("button");
+      rm.type = "button"; rm.className = "table-rm-col"; rm.textContent = "×"; rm.title = "remove column";
+      rm.onclick = (e) => { e.preventDefault(); removeTableColumn(b, c); };
+      th.appendChild(rm);
+      thead.appendChild(th);
+    });
+    const addColTh = document.createElement("th");
+    addColTh.className = "table-add"; addColTh.textContent = "+"; addColTh.title = "add column";
+    addColTh.onclick = () => addTableColumn(b);
+    thead.appendChild(addColTh);
+    table.appendChild(thead);
+
+    b.rows.forEach((row, r) => {
+      const tr = document.createElement("tr");
+      const handle = document.createElement("td");
+      handle.className = "table-handle";
+      const rmRow = document.createElement("button");
+      rmRow.type = "button"; rmRow.className = "table-rm-row"; rmRow.textContent = "×"; rmRow.title = "remove row";
+      rmRow.onclick = () => removeTableRow(b, r);
+      handle.appendChild(rmRow);
+      tr.appendChild(handle);
+      row.forEach((cell, c) => tr.appendChild(makeTableCell(b, r, c, cell, false)));
+      tr.appendChild(document.createElement("td")); // spacer under the +col button
+      table.appendChild(tr);
+    });
+    wrap.appendChild(table);
+
+    const addRowBtn = document.createElement("button");
+    addRowBtn.type = "button"; addRowBtn.className = "table-add-row"; addRowBtn.textContent = "+ row";
+    addRowBtn.onclick = () => addTableRow(b);
+
+    const rmTableBtn = document.createElement("button");
+    rmTableBtn.type = "button"; rmTableBtn.className = "table-rm-all"; rmTableBtn.textContent = "remove table";
+    rmTableBtn.title = "remove this whole table";
+    rmTableBtn.onclick = () => removeBlock(b.id);
+
+    const foot = document.createElement("div");
+    foot.className = "table-foot";
+    foot.appendChild(addRowBtn);
+    foot.appendChild(rmTableBtn);
+    wrap.appendChild(foot);
+    return wrap;
+  }
+
+  // text-bearing blocks: p, h, ul, ol, todo, quote — one contenteditable holding plain text
+  const container = document.createElement(b.type === "todo" || b.type === "ul" || b.type === "ol" ? "div" : "div");
+  container.dataset.id = b.id;
+
+  let textEl;
+  if (b.type === "todo") {
+    container.className = "block block-todo";
+    container.style.paddingLeft = (b.indent || 0) * 20 + "px"; // Tab/Shift-Tab nesting, same as ul/ol
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = !!b.checked;
+    cb.onchange = () => { b.checked = cb.checked; textEl.classList.toggle("checked", b.checked); syncBody(); };
+    container.appendChild(cb);
+    textEl = document.createElement("div");
+    textEl.className = "block-text" + (b.checked ? " checked" : "");
+    container.appendChild(textEl);
+  } else if (b.type === "ul" || b.type === "ol") {
+    container.className = "block block-" + b.type;
+    container.style.paddingLeft = (b.indent || 0) * 20 + "px";
+    const marker = document.createElement("span");
+    marker.className = "marker";
+    marker.textContent = b.type === "ul" ? "•" : (b._n || 1) + "."; // _n computed in renderEditorBlocks
+    container.appendChild(marker);
+    textEl = document.createElement("div");
+    textEl.className = "block-text";
+    container.appendChild(textEl);
+  } else {
+    textEl = container;
+    textEl.className = "block" + (b.type === "h" ? " block-h" + b.level : b.type === "quote" ? " block-quote" : "");
+  }
+
+  textEl.contentEditable = "true";
+  renderInlineInto(textEl, b.text || ""); // rendered (clickable links, bold/italic) until focused
+  textEl.setAttribute("data-placeholder", blockPlaceholder(b));
+
+  textEl.addEventListener("input", () => {
+    b.text = textEl.textContent;
+    if (applyTypeTrigger(b)) { syncBody(); renderEditorBlocks(); focusBlock(b.id, (b.text || "").length); return; }
+    syncBody();
+    checkSlashTrigger(textEl, b);
+    if (!slashOpen) checkWikiTriggerCE(textEl, b); // one popup at a time — / wins over [[
+  });
+  textEl.addEventListener("paste", (e) => {
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData("text/plain");
+    document.execCommand("insertText", false, text);
+  });
+  textEl.addEventListener("focus", () => {
+    textEl.textContent = b.text || ""; // switch to raw markdown source for editing
+    if (mode !== "insert") { mode = "insert"; setTimeout(() => { renderBar(); renderStatus(); }, 100); }
+  });
+  textEl.addEventListener("blur", () => {
+    closeWikiPopup();
+    closeSlash();
+    renderInlineInto(textEl, b.text || ""); // switch back to rendered (links clickable, bold/italic styled)
+    if (b === blocks[0] && b.type !== "h") return; // title still comes from the first line, same rule as before
+    maybeUpdateTitleFromFirstBlock();
+  });
+  textEl.addEventListener("keydown", (e) => {
+    if (slashOpen && slashBlock === b) {
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeSlash(); return; }
+      if (e.key === "ArrowDown") { e.preventDefault(); e.stopPropagation(); slashSel = Math.min(slashSel + 1, slashMatches.length - 1); renderSlashPopup(); return; }
+      if (e.key === "ArrowUp") { e.preventDefault(); e.stopPropagation(); slashSel = Math.max(slashSel - 1, 0); renderSlashPopup(); return; }
+      if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); e.stopPropagation(); runSlashItem(slashSel); return; }
+    }
+    if (wikiOpen && wikiCEBlock === b) {
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeWikiPopup(); return; }
+      if (e.key === "ArrowDown") { e.preventDefault(); e.stopPropagation(); wikiSel = Math.min(wikiSel + 1, wikiMatches.length - 1); renderWikiPopupCE(); return; }
+      if (e.key === "ArrowUp") { e.preventDefault(); e.stopPropagation(); wikiSel = Math.max(wikiSel - 1, 0); renderWikiPopupCE(); return; }
+      if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); e.stopPropagation(); insertWikiLinkCE(wikiSel); return; }
+    }
+    if ((e.metaKey || e.ctrlKey) && (e.key === "b" || e.key === "i" || (e.shiftKey && e.key.toLowerCase() === "x"))) {
+      const wrap = e.key === "b" ? "**" : e.key === "i" ? "*" : "~~";
+      e.preventDefault();
+      wrapSelectionWith(b, textEl, wrap);
+      return;
+    }
+    handleBlockKeydown(e, b, textEl);
+  });
+
+  return container;
+}
+
+function makeTableCell(b, r, c, value, isHeader) {
+  // the editable text lives in a nested div, not the <td>/<th> itself, so a sibling
+  // remove-column button (appended to the cell afterward) never leaks into .textContent
+  const cell = document.createElement(isHeader ? "th" : "td");
+  const text = document.createElement("div");
+  text.className = "cell-text";
+  text.contentEditable = "true";
+  text.textContent = value;
+  text.addEventListener("input", () => {
+    if (isHeader) b.header[c] = text.textContent; else b.rows[r][c] = text.textContent;
+    syncBody();
+  });
+  text.addEventListener("keydown", (e) => { if (e.key === "Enter") e.preventDefault(); e.stopPropagation(); });
+  cell.appendChild(text);
+  return cell;
+}
+
+function addTableColumn(b) {
+  b.header.push("col " + (b.header.length + 1));
+  b.rows.forEach((row) => row.push(""));
+  syncBody();
+  renderEditorBlocks();
+}
+
+function removeTableColumn(b, c) {
+  if (b.header.length <= 1) return; // keep at least one column
+  b.header.splice(c, 1);
+  b.rows.forEach((row) => row.splice(c, 1));
+  syncBody();
+  renderEditorBlocks();
+}
+
+function addTableRow(b) {
+  b.rows.push(b.header.map(() => ""));
+  syncBody();
+  renderEditorBlocks();
+}
+
+function removeTableRow(b, r) {
+  b.rows.splice(r, 1);
+  syncBody();
+  renderEditorBlocks();
+}
+
+function maybeUpdateTitleFromFirstBlock() {
+  if (!active || !blocks.length) return;
+  const first = (blocks[0].text || "").trim().slice(0, 40);
+  if (first && first !== active.title) { active.title = first; scheduleSave(); }
+}
+
+// live markdown-shortcut detection while typing — "# " becomes a heading, "- " a bullet, etc.,
+// the same interaction Notion/Obsidian use. Mutates b in place; returns true if the block's
+// type changed (caller re-renders + refocuses in that case since the DOM shape changes).
+function applyTypeTrigger(b) {
+  if (!["p", "ul", "ol", "todo", "quote"].includes(b.type)) return false;
+  const t = b.text || "";
+  let m;
+  if ((m = t.match(/^(#{1,3})\s(.*)$/))) { b.type = "h"; b.level = m[1].length; b.text = m[2]; return true; }
+  if ((m = t.match(/^-\s\[([ xX])\]\s(.*)$/))) { b.type = "todo"; b.checked = m[1].toLowerCase() === "x"; b.text = m[2]; return true; }
+  if (b.type !== "ul" && (m = t.match(/^-\s(.*)$/))) { b.type = "ul"; b.text = m[1]; return true; }
+  if (b.type !== "ol" && (m = t.match(/^\d+\.\s(.*)$/))) { b.type = "ol"; b.text = m[1]; return true; }
+  if (b.type !== "quote" && (m = t.match(/^>\s(.*)$/))) { b.type = "quote"; b.text = m[1]; return true; }
+  if (b.type === "p" && t === "```") { b.type = "code"; b.text = ""; b.lang = ""; return true; }
+  return false;
+}
+
+// command-palette-triggered inserts for block types with no natural typing trigger
+// (a table/toggle/divider can't be typed one character at a time the way a heading can)
+function insertBlockAtEnd(block) {
+  if (!active) return;
+  blocks.push(block);
+  syncBody();
+  renderEditorBlocks();
+  if (block.type === "table" || block.type === "hr") return; // nothing text-editable to focus
+  focusBlock(block.id, 0);
+}
+
+function renderEditorBlocks() {
+  const host = $("#blockEditor");
+  if (!host) return;
+  host.innerHTML = "";
+  let olN = 0; // same numbering rule as serializeBlocks — consecutive ol blocks count up
+  blocks.forEach((b) => {
+    olN = b.type === "ol" ? olN + 1 : 0;
+    b._n = olN;
+    host.appendChild(renderBlockEl(b));
+  });
+}
+
+function focusBlock(id, caretPos) {
+  // synchronous, not requestAnimationFrame-deferred: renderEditorBlocks() has already
+  // finished replacing the DOM by the time this runs (both are called back-to-back from
+  // handleBlockKeydown), so the target node exists immediately — focus() and caret placement
+  // don't need a layout pass first. Deferring here used to leave a one-frame gap between the
+  // old block being torn down and the new one gaining focus; keystrokes typed into that gap
+  // (fast typing, autocomplete bursts, iPad soft-keyboard) landed nowhere and got silently
+  // dropped, corrupting note content.
+  const host = $("#blockEditor");
+  if (!host) return;
+  const el = host.querySelector('[data-id="' + id + '"]');
+  if (!el) return;
+  let editable = el.matches("[contenteditable]") ? el : el.querySelector("[contenteditable]");
+  if (!editable) editable = el.matches("textarea") ? el : el.querySelector("textarea");
+  if (!editable) return;
+  editable.focus();
+  if (editable.tagName === "TEXTAREA") {
+    const pos = caretPos == null ? editable.value.length : Math.min(caretPos, editable.value.length);
+    editable.setSelectionRange(pos, pos);
+  } else {
+    setCaretOffset(editable, caretPos == null ? editable.textContent.length : caretPos);
+  }
+}
+
+function removeBlock(id) {
+  const i = blocks.findIndex((b) => b.id === id);
+  if (i === -1) return;
+  blocks.splice(i, 1);
+  if (!blocks.length) blocks.push({ id: uid(), type: "p", text: "" });
+  syncBody();
+  renderEditorBlocks();
+}
+
+/* ---- block operations (shared by the keyboard bar and keyboard shortcuts) ---- */
+
+// the block the toolbar should act on: whatever's focused right now, else the last one touched
+function currentBlock() {
+  const el = document.activeElement;
+  const host = $("#blockEditor");
+  if (host && el && host.contains(el)) {
+    const wrap = el.closest("[data-id]");
+    if (wrap) { const b = blocks.find((x) => x.id === wrap.dataset.id); if (b) return b; }
+  }
+  return blocks.find((x) => x.id === curBlockId) || blocks[blocks.length - 1] || null;
+}
+
+function moveBlockBy(b, dir, caret) {
+  const i = blocks.findIndex((x) => x.id === b.id);
+  const j = i + dir;
+  if (i === -1 || j < 0 || j >= blocks.length) return;
+  blocks[i] = blocks[j]; blocks[j] = b; // swap
+  syncBody(); renderEditorBlocks(); focusBlock(b.id, caret);
+}
+
+function duplicateBlock(b) {
+  const i = blocks.findIndex((x) => x.id === b.id);
+  if (i === -1) return;
+  const copy = JSON.parse(JSON.stringify(b)); // deep copy — tables have nested arrays
+  copy.id = uid();
+  blocks.splice(i + 1, 0, copy);
+  syncBody(); renderEditorBlocks(); focusBlock(copy.id);
+}
+
+const TEXT_TYPES = new Set(["p", "h", "ul", "ol", "todo", "quote"]);
+
+// converts the current block to a given type (toolbar/H1-H3 shortcuts). Converting to the
+// type it already is toggles back to a plain paragraph — tap H1 twice to undo the H1.
+function convertBlockType(b, type, level) {
+  if (!b) return;
+  if (!TEXT_TYPES.has(b.type) && b.type !== "code") { insertAfterBlock(b, type, level); return; }
+  const same = b.type === type && (type !== "h" || b.level === level);
+  if (same) { b.type = "p"; delete b.level; }
+  else {
+    b.type = type;
+    if (type === "h") b.level = level;
+    if (type === "todo" && b.checked === undefined) b.checked = false;
+    b.text = b.text || "";
+  }
+  const pos = (b.text || "").length;
+  syncBody(); renderEditorBlocks(); focusBlock(b.id, pos);
+}
+
+// structural types (table/toggle/divider/code) can't convert a text block in place from the
+// toolbar without losing text — they insert right after the current block instead
+function insertAfterBlock(b, type) {
+  const i = b ? blocks.findIndex((x) => x.id === b.id) : blocks.length - 1;
+  const nb =
+    type === "table" ? { id: uid(), type: "table", header: ["a", "b"], rows: [["", ""]] } :
+    type === "toggle" ? { id: uid(), type: "toggle", text: "", body: "" } :
+    type === "hr" ? { id: uid(), type: "hr" } :
+    type === "code" ? { id: uid(), type: "code", text: "", lang: "" } :
+    { id: uid(), type: "p", text: "" };
+  blocks.splice(i + 1, 0, nb);
+  syncBody(); renderEditorBlocks();
+  if (type !== "table" && type !== "hr") focusBlock(nb.id, 0);
+}
+
+function indentBlockBy(b, d, caret) {
+  if (!b || !["ul", "ol", "todo"].includes(b.type)) return;
+  const next = Math.max(0, Math.min(5, (b.indent || 0) + d));
+  if (next === (b.indent || 0)) return;
+  b.indent = next;
+  syncBody(); renderEditorBlocks(); focusBlock(b.id, caret);
+}
+
+/* Enter (split) / Backspace-at-start (merge) — the two structural edits every WYSIWYG editor
+   has to get right. Everything else is plain browser text editing inside one block. */
+function handleBlockKeydown(e, b, el) {
+  if (wikiOpen) return; // let the [[ popup's own handler run instead (see checkWikiTriggerCE)
+  if (slashOpen) return; // same for the / menu — its handler in the keydown listener runs first
+
+  // Tab / Shift-Tab nest and un-nest list items (bullet, numbered, to-do)
+  if (e.key === "Tab" && ["ul", "ol", "todo"].includes(b.type)) {
+    e.preventDefault();
+    indentBlockBy(b, e.shiftKey ? -1 : 1, getCaretOffset(el));
+    return;
+  }
+
+  // Alt+↑/↓ moves the whole block up or down — same keys as Notion/VS Code
+  if (e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+    e.preventDefault();
+    moveBlockBy(b, e.key === "ArrowUp" ? -1 : 1, getCaretOffset(el));
+    return;
+  }
+
+  // Ctrl/Cmd+D duplicates the current block (preventDefault stops the browser's bookmark dialog)
+  if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "d") {
+    e.preventDefault();
+    duplicateBlock(b);
+    return;
+  }
+
+  // Ctrl/Cmd+Alt+0..3 — paragraph / heading 1-3. e.code because Alt+digit types a
+  // special character on macOS, which would make e.key useless here
+  if ((e.metaKey || e.ctrlKey) && e.altKey && /^Digit[0-3]$/.test(e.code)) {
+    e.preventDefault();
+    const n = +e.code.slice(5);
+    convertBlockType(b, n === 0 ? "p" : "h", n || undefined);
+    return;
+  }
+
+  // Ctrl/Cmd+Enter checks / unchecks a to-do from the keyboard
+  if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && b.type === "todo") {
+    e.preventDefault();
+    b.checked = !b.checked;
+    syncBody(); renderEditorBlocks(); focusBlock(b.id, getCaretOffset(el));
+    return;
+  }
+
+  // ↑ at the very start / ↓ at the very end walks into the neighboring block,
+  // so arrow keys travel through the whole note instead of stopping at block edges
+  if ((e.key === "ArrowUp" || e.key === "ArrowDown") && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+    const pos = getCaretOffset(el);
+    const len = (b.text || "").length;
+    const i = blocks.findIndex((x) => x.id === b.id);
+    if (e.key === "ArrowUp" && pos === 0 && i > 0) {
+      e.preventDefault(); focusBlock(blocks[i - 1].id); return;
+    }
+    if (e.key === "ArrowDown" && pos === len && i < blocks.length - 1) {
+      e.preventDefault(); focusBlock(blocks[i + 1].id, 0); return;
+    }
+  }
+
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    const pos = getCaretOffset(el);
+    const before = (b.text || "").slice(0, pos);
+    const after = (b.text || "").slice(pos);
+    const i = blocks.findIndex((x) => x.id === b.id);
+
+    if ((b.type === "ul" || b.type === "ol" || b.type === "todo") && b.text === "") {
+      // enter on an empty list item exits the list, like most block editors
+      b.type = "p";
+      syncBody(); renderEditorBlocks(); focusBlock(b.id, 0);
+      return;
+    }
+
+    b.text = before;
+    const newType = b.type === "ul" || b.type === "ol" || b.type === "todo" ? b.type : "p";
+    const next = { id: uid(), type: newType, text: after, indent: b.indent, checked: false };
+    blocks.splice(i + 1, 0, next);
+    syncBody();
+    renderEditorBlocks();
+    focusBlock(next.id, 0);
+    return;
+  }
+
+  if (e.key === "Backspace") {
+    const pos = getCaretOffset(el);
+    if (pos !== 0) return; // let the browser handle normal in-block deletion
+    const i = blocks.findIndex((x) => x.id === b.id);
+    if (i === 0) return; // nothing before the first block to merge into
+    e.preventDefault();
+    const prev = blocks[i - 1];
+    if (prev.type === "hr" || prev.type === "code" || prev.type === "table") {
+      // don't silently merge text into a structural block — just drop into it instead
+      focusBlock(prev.id);
+      return;
+    }
+    const joinAt = (prev.text || "").length;
+    prev.text = (prev.text || "") + (b.text || "");
+    blocks.splice(i, 1);
+    syncBody();
+    renderEditorBlocks();
+    focusBlock(prev.id, joinAt);
+  }
+}
+
+/* ---- [[ ]] autocomplete inside a contenteditable block (mirrors checkWikiTrigger for <textarea>) ---- */
+function checkWikiTriggerCE(el, b) {
+  const caret = getCaretOffset(el);
+  const start = findWikiTrigger(b.text || "", caret);
+  if (start === -1) { closeWikiPopup(); return; }
+  wikiStart = start;
+  const query = (b.text || "").slice(start, caret);
+  wikiMatches = notes
+    .map((n) => ({ n, score: fuzzyScore(query, n.title) }))
+    .filter((x) => x.score >= 0)
+    .sort((a, b2) => b2.score - a.score)
+    .slice(0, 6)
+    .map((x) => x.n);
+  if (!wikiMatches.length) { closeWikiPopup(); return; }
+  wikiOpen = true;
+  wikiSel = 0;
+  wikiCEBlock = b;
+  wikiCEEl = el;
+  renderWikiPopupCE();
+}
+
+let wikiCEBlock = null, wikiCEEl = null;
+
+function renderWikiPopupCE() {
+  let popup = $("#wikiPopup");
+  if (!popup) {
+    popup = document.createElement("ul");
+    popup.id = "wikiPopup";
+    popup.className = "wiki-popup";
+    $("#main").appendChild(popup);
+  }
+  popup.innerHTML = wikiMatches
+    .map((n, i) => '<li data-i="' + i + '" class="' + (i === wikiSel ? "sel" : "") + '">' + esc(n.title) + "</li>")
+    .join("");
+  popup.querySelectorAll("li").forEach((li) => {
+    li.onmousedown = (e) => { e.preventDefault(); insertWikiLinkCE(parseInt(li.getAttribute("data-i"), 10)); };
+  });
+}
+
+function insertWikiLinkCE(i) {
+  const n = wikiMatches[i];
+  if (!n || !wikiCEBlock || !wikiCEEl) return;
+  const caret = getCaretOffset(wikiCEEl);
+  const text = wikiCEBlock.text || "";
+  const before = text.slice(0, wikiStart);
+  const after = text.slice(caret);
+  const insertion = n.title + "]]";
+  wikiCEBlock.text = before + insertion + after;
+  wikiCEEl.textContent = wikiCEBlock.text;
+  syncBody();
+  closeWikiPopup();
+  wikiCEEl.focus();
+  setCaretOffset(wikiCEEl, wikiStart + insertion.length);
+}
+
+/* ---- "/" slash menu — Notion's signature interaction ----
+   Typing "/" at the start of any text block opens a block-type menu; keep typing to filter
+   ("/tab" → table), Enter/Tab/click to apply. Three shapes of command:
+   - apply: converts the current block in place (headings, lists, quote…)
+   - replace: swaps the current block for a structural one (table, toggle, divider)
+   - replaceMany: swaps it for several blocks (the generated month calendar) */
+let slashOpen = false, slashMatches = [], slashSel = 0, slashBlock = null, slashEl = null;
+
+const SLASH_ITEMS = [
+  { label: "text", apply: (b) => { b.type = "p"; delete b.level; } },
+  { label: "heading 1", apply: (b) => { b.type = "h"; b.level = 1; } },
+  { label: "heading 2", apply: (b) => { b.type = "h"; b.level = 2; } },
+  { label: "heading 3", apply: (b) => { b.type = "h"; b.level = 3; } },
+  { label: "bullet list", apply: (b) => { b.type = "ul"; } },
+  { label: "numbered list", apply: (b) => { b.type = "ol"; } },
+  { label: "to-do list", apply: (b) => { b.type = "todo"; b.checked = false; } },
+  { label: "quote", apply: (b) => { b.type = "quote"; } },
+  { label: "code block", apply: (b) => { b.type = "code"; b.lang = ""; } },
+  { label: "divider", replace: () => ({ id: uid(), type: "hr" }) },
+  { label: "table", replace: () => ({ id: uid(), type: "table", header: ["a", "b"], rows: [["", ""]] }) },
+  { label: "toggle", replace: () => ({ id: uid(), type: "toggle", text: "", body: "" }) },
+  { label: "calendar (this month)", replaceMany: () => parseBlocks(monthCalendarMarkdown()) },
+  { label: "today's date", apply: (b) => { b.type = "p"; b.text = todayStr(); } },
+];
+
+function checkSlashTrigger(el, b) {
+  const t = b.text || "";
+  if (!TEXT_TYPES.has(b.type) || !t.startsWith("/")) { closeSlash(); return; }
+  const q = t.slice(1);
+  slashMatches = SLASH_ITEMS
+    .map((it) => ({ it, score: q ? fuzzyScore(q, it.label) : 0 }))
+    .filter((x) => x.score >= 0)
+    .sort((a, b2) => b2.score - a.score)
+    .map((x) => x.it);
+  if (!slashMatches.length) { closeSlash(); return; }
+  slashOpen = true; slashSel = 0; slashBlock = b; slashEl = el;
+  renderSlashPopup();
+}
+
+function renderSlashPopup() {
+  let popup = $("#slashPopup");
+  if (!popup) {
+    popup = document.createElement("ul");
+    popup.id = "slashPopup";
+    popup.className = "wiki-popup"; // same look/position as the [[ autocomplete
+    $("#main").appendChild(popup);
+  }
+  popup.innerHTML = slashMatches
+    .map((it, i) => '<li data-i="' + i + '" class="' + (i === slashSel ? "sel" : "") + '">' + esc(it.label) + "</li>")
+    .join("");
+  popup.querySelectorAll("li").forEach((li) => {
+    li.onmousedown = (e) => { e.preventDefault(); runSlashItem(parseInt(li.getAttribute("data-i"), 10)); };
+  });
+}
+
+function closeSlash() {
+  slashOpen = false; slashBlock = null; slashEl = null;
+  const popup = $("#slashPopup");
+  if (popup) popup.remove();
+}
+
+function runSlashItem(i) {
+  const item = slashMatches[i];
+  const b = slashBlock;
+  closeSlash();
+  if (!item || !b) return;
+  const idx = blocks.findIndex((x) => x.id === b.id);
+  if (idx === -1) return;
+  b.text = ""; // eat the "/query" text — it was a command, not content
+  if (item.replaceMany) {
+    blocks.splice(idx, 1, ...item.replaceMany());
+    syncBody(); renderEditorBlocks();
+  } else if (item.replace) {
+    const nb = item.replace();
+    blocks.splice(idx, 1, nb);
+    syncBody(); renderEditorBlocks();
+    if (nb.type === "toggle") focusBlock(nb.id, 0);
+  } else {
+    item.apply(b);
+    syncBody(); renderEditorBlocks(); focusBlock(b.id, (b.text || "").length);
+  }
+}
+
 /* ---- render: main ---- */
 function renderMain() {
   const main = $("#main");
+  if (localFile) { renderLocalFileView(); return; }
   if (!active) {
-    main.innerHTML = '<div class="empty"><p>no note open.</p><button class="ghost" id="emptyNew">+ new note</button></div>';
+    // empty state doubles as a template picker — a first note shouldn't start from nothing
+    main.innerHTML = '<div class="empty"><p>no note open.</p><button class="ghost" id="emptyNew">+ new note</button>' +
+      TEMPLATES.slice(0, 4).map((t, i) => '<button class="ghost sm" data-tpl="' + i + '">+ ' + esc(t.name) + '</button>').join("") +
+      '</div>';
     $("#emptyNew").onclick = () => newNote();
+    main.querySelectorAll("[data-tpl]").forEach((btn) => {
+      btn.onclick = () => newNote(null, TEMPLATES[+btn.getAttribute("data-tpl")]);
+    });
     return;
   }
-  if (mode === "draw") {
+  if (mode === "draw" && !blockEditorEnabled()) {
+    // legacy draw view — only for the plain-textarea editor. The block editor gets the
+    // unified surface below where text and ink share one canvas.
     main.innerHTML =
-      '<div class="drawwrap" id="drawwrap"><div class="drawbar">' +
-        '<div class="swatches" id="sw"></div>' +
-        '<div class="sizes" id="sz"></div>' +
-        '<div class="spacer"></div>' +
-        // eraser toggle button — "on" class makes it turn green (same style as pen-only)
-        '<button class="toggle ' + (erasing ? "on" : "") + '" id="eraser">eraser ' + (erasing ? "on" : "off") + '</button>' +
-        '<button class="toggle ' + (penOnly ? "on" : "") + '" id="penonly" title="Ignore finger and palm, pencil only">pen-only ' + (penOnly ? "on" : "off") + '</button>' +
-        '<button class="ghost sm" id="undo">undo</button>' +
-        '<button class="ghost sm" id="clear">clear</button>' +
+      '<div class="drawwrap" id="drawwrap"><div class="drawbar">' + drawbarHtml() +
       // base canvas (#cv) holds all committed strokes; live canvas (#cvlive) holds only the stroke being drawn right now
       // splitting them means we never redraw old strokes while the pen is moving — massive latency reduction
       '</div><div class="canvas-scroll"><div class="canvas-wrap" id="cvwrap"><canvas class="canvas" id="cv"></canvas><canvas class="cv-live" id="cvlive"></canvas></div></div></div>';
     buildDrawControls();
+    const legacyScroll = $(".canvas-scroll");
+    legacyScroll.addEventListener("pointerdown", down);
+    legacyScroll.addEventListener("pointermove", move);
+    legacyScroll.addEventListener("pointerup", up);
+    legacyScroll.addEventListener("pointerleave", up);
+    legacyScroll.addEventListener("pointercancel", up);
     requestAnimationFrame(setupCanvas);
+  } else if (blockEditorEnabled()) {
+    // ONE surface for text and ink: #blockEditor and the two canvases are siblings inside
+    // .note-surface, scrolled together by .note-scroll. Insert and draw are just input modes
+    // over the same canvas — switching between them toggles CSS classes (see applyModeUI),
+    // it never rebuilds this DOM, so the pencil can start drawing mid-gesture with no rebuild.
+    main.innerHTML =
+      '<div class="drawbar" id="drawbar" hidden>' + drawbarHtml() + '</div>' +
+      '<div class="note-scroll" id="noteScroll"><div class="note-surface" id="noteSurface">' +
+        '<div id="blockEditor"></div>' +
+        '<canvas class="ink" id="cv"></canvas><canvas class="ink" id="cvlive"></canvas>' +
+      '</div></div>' +
+      '<div class="kbar" id="kbar"></div>' +
+      '<div class="backlinks" id="backlinksPanel" hidden></div>';
+    blocks = parseBlocks(active.body);
+    renderEditorBlocks();
+    buildKbar();
+    buildDrawControls();
+    // pointer handlers live on the scroller permanently, in every mode — down() decides what a
+    // pointer means: pen in text mode flips to draw and starts the stroke, fingers scroll, etc.
+    const scroll = $("#noteScroll");
+    scroll.addEventListener("pointerdown", down);
+    scroll.addEventListener("pointermove", move);
+    scroll.addEventListener("pointerup", up);
+    scroll.addEventListener("pointerleave", up);
+    scroll.addEventListener("pointercancel", up);
+    applyModeUI();
+    renderBacklinksPanel();
+    requestAnimationFrame(sizeInkCanvas);
+    // only auto-focus for a genuinely empty (freshly created) note, ready to type into immediately —
+    // auto-focusing an EXISTING note's first block put it into raw-text edit mode on open, which meant
+    // any [[link]] sitting in that first line rendered as plain unclickable text until you clicked
+    // away first. Existing notes now open fully rendered (links clickable); a single click into any
+    // block starts typing there just fine on its own (see the focusin handler further down).
+    if (mode === "insert" && !active.body.trim()) focusBlock(blocks[0].id, 0);
   } else {
     // plain textarea filling the main area — simplest setup so Android tap-to-focus works
-    main.innerHTML = '<textarea class="editor" id="ed" spellcheck="false" placeholder="# start writing\u2026"></textarea>';
+    main.innerHTML =
+      '<textarea class="editor" id="ed" spellcheck="false" placeholder="# start writing\u2026"></textarea>' +
+      '<div class="backlinks" id="backlinksPanel" hidden></div>';
+    renderBacklinksPanel(); // repaint from already-fetched data (e.g. after a re-render mid-poll)
     const ed = $("#ed");
     ed.value = active.body;
 
-    ed.addEventListener("input", () => { active.body = ed.value; lastTyped = Date.now(); scheduleSave(); });
+    ed.addEventListener("input", () => { active.body = ed.value; lastTyped = Date.now(); scheduleSave(); checkWikiTrigger(ed); });
 
     ed.addEventListener("blur", () => {
       const first = (active.body.split("\n")[0] || "").replace(/^#+\s*/, "").trim().slice(0, 40);
       if (first && first !== active.title) { active.title = first; scheduleSave(); }
+      closeWikiPopup();
+    });
+
+    // handled on the element itself (fires before the window-level listener) so the
+    // wiki popup can eat Escape/Arrow/Enter without triggering global shortcuts underneath it
+    ed.addEventListener("keydown", (e) => {
+      if (!wikiOpen) return;
+      if (e.key === "Escape") { e.stopPropagation(); closeWikiPopup(); }
+      else if (e.key === "ArrowDown") { e.preventDefault(); e.stopPropagation(); wikiSel = Math.min(wikiSel + 1, wikiMatches.length - 1); paintWikiSelection(); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); e.stopPropagation(); wikiSel = Math.max(wikiSel - 1, 0); paintWikiSelection(); }
+      else if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); e.stopPropagation(); insertWikiLink(ed, wikiSel); }
     });
 
     // update mode when textarea is focused — defer DOM changes so they don't block the keyboard on Android
@@ -602,6 +2440,174 @@ function renderMain() {
 
 function focusEditor() { const ed = $("#ed"); if (ed) ed.focus(); }
 
+/* ---- mode switching ----
+   On the unified surface, insert<->draw is just CSS class + toolbar visibility toggles —
+   no re-render, no new canvas, no lost scroll position. Everything that used to write
+   `mode = ...; renderMain(); ...` goes through here now. */
+function setMode(m) {
+  mode = m;
+  if ($("#noteScroll") && active && !localFile) {
+    applyModeUI();
+    if (m === "draw") sizeInkCanvas(); // content may have grown since last draw session
+  } else {
+    renderMain();
+    if (m === "insert") focusEditor();
+  }
+  renderBar(); renderStatus();
+}
+
+function applyModeUI() {
+  const scroll = $("#noteScroll");
+  if (!scroll) return;
+  const drawOn = mode === "draw";
+  scroll.classList.toggle("draw-on", drawOn);
+  const db = $("#drawbar"); if (db) db.hidden = !drawOn;
+  const kb = $("#kbar"); if (kb) { kb.hidden = drawOn; positionKbar(); }
+}
+
+// shared by the unified drawbar and the legacy textarea draw view
+function drawbarHtml() {
+  return '<div class="swatches" id="sw"></div>' +
+    '<div class="sizes" id="sz"></div>' +
+    '<div class="spacer"></div>' +
+    '<button class="toggle ' + (markerOn ? "on" : "") + '" id="marker" title="Translucent highlighter strokes">marker ' + (markerOn ? "on" : "off") + '</button>' +
+    '<button class="toggle ' + (erasing ? "on" : "") + '" id="eraser">eraser ' + (erasing ? "on" : "off") + '</button>' +
+    '<button class="toggle ' + (penOnly ? "on" : "") + '" id="penonly" title="Ignore finger and palm, pencil only">pen-only ' + (penOnly ? "on" : "off") + '</button>' +
+    '<button class="ghost sm" id="undo">undo</button>' +
+    '<button class="ghost sm" id="redoInk">redo</button>' +
+    '<button class="ghost sm" id="clear">clear</button>' +
+    '<button class="ghost sm" id="drawDone" title="Back to writing">done</button>';
+}
+
+/* ---- keyboard bar ----
+   The row of block/formatting buttons every serious mobile editor has above the keyboard.
+   Buttons are declared as data; mousedown-preventDefault keeps the focused block focused
+   (so the button knows what to act on), and every action refocuses afterward so the
+   on-screen keyboard never collapses mid-edit. */
+const KBAR_ITEMS = [
+  { t: "H1", title: "heading 1", run: () => convertBlockType(currentBlock(), "h", 1) },
+  { t: "H2", title: "heading 2", run: () => convertBlockType(currentBlock(), "h", 2) },
+  { t: "H3", title: "heading 3", run: () => convertBlockType(currentBlock(), "h", 3) },
+  { div: true },
+  { t: "&bull;", title: "bullet list", run: () => convertBlockType(currentBlock(), "ul") },
+  { t: "1.", title: "numbered list", run: () => convertBlockType(currentBlock(), "ol") },
+  { t: "&#9745;", title: "to-do checkbox", run: () => convertBlockType(currentBlock(), "todo") },
+  { t: "&#10077;", title: "quote", run: () => convertBlockType(currentBlock(), "quote") },
+  { div: true },
+  { t: "&#9638;", title: "insert table", run: () => insertAfterBlock(currentBlock(), "table") },
+  { t: "&#9656;", title: "insert toggle", run: () => insertAfterBlock(currentBlock(), "toggle") },
+  { t: "&lt;/&gt;", title: "insert code block", run: () => insertAfterBlock(currentBlock(), "code") },
+  { t: "&#8213;", title: "insert divider", run: () => insertAfterBlock(currentBlock(), "hr") },
+  { div: true },
+  { t: "<b>B</b>", title: "bold (select text first) — Ctrl+B", run: () => kbarWrap("**") },
+  { t: "<i>I</i>", title: "italic — Ctrl+I", run: () => kbarWrap("*") },
+  { t: "<s>S</s>", title: "strikethrough — Ctrl+Shift+X", run: () => kbarWrap("~~") },
+  { t: "`", title: "inline code", run: () => kbarWrap("`") },
+  { t: "[[", title: "link to another note", run: () => kbarInsertWiki() },
+  { div: true },
+  { t: "&#8676;", title: "outdent (Shift+Tab)", run: () => { const b = currentBlock(); if (b) indentBlockBy(b, -1); } },
+  { t: "&#8677;", title: "indent (Tab)", run: () => { const b = currentBlock(); if (b) indentBlockBy(b, 1); } },
+  { t: "&#8593;", title: "move block up (Alt+↑)", run: () => { const b = currentBlock(); if (b) moveBlockBy(b, -1); } },
+  { t: "&#8595;", title: "move block down (Alt+↓)", run: () => { const b = currentBlock(); if (b) moveBlockBy(b, 1); } },
+  { t: "&#10697;", title: "duplicate block (Ctrl+D)", run: () => { const b = currentBlock(); if (b) duplicateBlock(b); } },
+  { t: "&#10005;", title: "delete block", run: () => { const b = currentBlock(); if (b) { removeBlock(b.id); curBlockId = null; } } },
+  { div: true },
+  { t: "&#8630;", title: "undo (Ctrl+Z)", run: () => doUndo() },
+  { t: "&#8631;", title: "redo (Ctrl+Shift+Z)", run: () => doRedo() },
+];
+
+function buildKbar() {
+  const kb = $("#kbar");
+  if (!kb) return;
+  kb.innerHTML = KBAR_ITEMS.map((it, i) =>
+    it.div ? '<span class="kdiv"></span>' :
+    '<button data-k="' + i + '" title="' + esc(it.title) + '">' + it.t + '</button>').join("");
+  // mousedown preventDefault = the tap never steals focus from the block being edited
+  kb.addEventListener("mousedown", (e) => e.preventDefault());
+  kb.querySelectorAll("button[data-k]").forEach((btn) => {
+    btn.onclick = () => { const it = KBAR_ITEMS[+btn.getAttribute("data-k")]; if (it) it.run(); };
+  });
+}
+
+// bold/italic/etc from the toolbar — needs a live selection inside a focused block
+function kbarWrap(wrap) {
+  const el = document.activeElement;
+  const host = $("#blockEditor");
+  if (!host || !el || !host.contains(el) || !el.isContentEditable) return;
+  const b = currentBlock();
+  if (b && TEXT_TYPES.has(b.type)) wrapSelectionWith(b, el, wrap);
+}
+
+// appends "[[" to the current block and opens the note autocomplete right away
+function kbarInsertWiki() {
+  const b = currentBlock();
+  if (!b || !TEXT_TYPES.has(b.type)) return;
+  b.text = (b.text || "") + "[[";
+  syncBody(); renderEditorBlocks(); focusBlock(b.id, b.text.length);
+  const host = $("#blockEditor");
+  const wrapEl = host && host.querySelector('[data-id="' + b.id + '"]');
+  const el = wrapEl && (wrapEl.matches("[contenteditable]") ? wrapEl : wrapEl.querySelector("[contenteditable]"));
+  if (el) checkWikiTriggerCE(el, b);
+}
+
+// floats the kbar on top of the on-screen keyboard. The visualViewport API reports the
+// visible area minus the keyboard; the gap between it and the layout viewport IS the
+// keyboard height, so translating the bar up by that much parks it right on top of it.
+function positionKbar() {
+  const kb = $("#kbar");
+  if (!kb || kb.hidden) return;
+  const vv = window.visualViewport;
+  if (!vv) return;
+  const inset = window.innerHeight - vv.height - vv.offsetTop;
+  if (inset > 60) { kb.classList.add("floating"); kb.style.transform = "translateY(" + (-inset) + "px)"; }
+  else { kb.classList.remove("floating"); kb.style.transform = ""; }
+}
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", positionKbar);
+  window.visualViewport.addEventListener("scroll", positionKbar);
+}
+
+/* ---- ink canvas sizing (unified surface) ----
+   The canvases must cover everything: the visible viewport, all the text, and every stroke
+   already drawn (plus room below to keep drawing). Resizing a canvas wipes it, so redraw() runs
+   after — which is why syncBody debounces this instead of calling it per keystroke. */
+function sizeInkCanvas() {
+  const cv = $("#cv"), cvlive = $("#cvlive"), surface = $("#noteSurface"), scroll = $("#noteScroll");
+  if (!cv || !surface || !scroll) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = scroll.clientWidth;
+  let maxY = 0;
+  for (const s of (active && active.strokes) || []) {
+    for (const p of s.points || []) if (p.y > maxY) maxY = p.y;
+  }
+  const editorH = $("#blockEditor") ? $("#blockEditor").scrollHeight : 0;
+  const H = Math.max(scroll.clientHeight, editorH, maxY + 500, 1400);
+  surface.style.minHeight = H + "px"; // give the scroller real drawing room below the text
+  for (const c of [cv, cvlive]) {
+    if (c.width === Math.round(W * dpr) && c.height === Math.round(H * dpr)) continue;
+    c.style.width = W + "px";
+    c.style.height = H + "px";
+    c.width = Math.round(W * dpr);
+    c.height = Math.round(H * dpr);
+    const ctx = c.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // 1 unit = 1 CSS pixel on retina
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+  }
+  redraw();
+}
+
+/* ---- ink undo/redo ---- */
+function undoStroke() {
+  if (!active || !(active.strokes || []).length) return;
+  strokeRedo.push(active.strokes.pop());
+  redraw(); scheduleSave();
+}
+function redoStroke() {
+  if (!active || !strokeRedo.length) return;
+  active.strokes.push(strokeRedo.pop());
+  redraw(); scheduleSave();
+}
+
 function buildDrawControls() {
   $("#sw").innerHTML = PENS.map((p, i) =>
     '<button class="sw ' + (i === penIdx ? "on" : "") + '" data-i="' + i + '" style="background:' + p.c + '" title="' + p.name + '" aria-label="' + p.name + '"></button>').join("");
@@ -614,18 +2620,25 @@ function buildDrawControls() {
       $("#sw").querySelectorAll(".sw").forEach((x, j) => x.classList.toggle("on", j === penIdx));
     };
   });
-  $("#eraser").onclick = () => { erasing = !erasing; updateEraser(); }; // toggle eraser on/off
-  $("#penonly").onclick = () => { penOnly = !penOnly; updatePenOnly(); };
-  $("#undo").onclick = () => { if (!active) return; active.strokes = (active.strokes || []).slice(0, -1); redraw(); scheduleSave(); };
-  $("#clear").onclick = () => { if (!active) return; active.strokes = []; redraw(); scheduleSave(); };
+  // marker and eraser are mutually exclusive — turning one on turns the other off
+  $("#marker").onclick = () => { markerOn = !markerOn; if (markerOn) erasing = false; updateEraser(); updateMarker(); };
+  $("#eraser").onclick = () => { erasing = !erasing; if (erasing) markerOn = false; updateEraser(); updateMarker(); };
+  $("#penonly").onclick = () => { setPenOnly(!penOnly); updatePenOnly(); };
+  $("#undo").onclick = undoStroke;
+  $("#redoInk").onclick = redoStroke;
+  // wiping every stroke is the one draw action you can't undo one step at a time — confirm it
+  $("#clear").onclick = () => {
+    if (!active || !(active.strokes || []).length) return;
+    if (confirm("erase all ink on this note?")) { active.strokes = []; strokeRedo = []; redraw(); scheduleSave(); }
+  };
+  $("#drawDone").onclick = () => setMode("insert");
+  updatePenOnly();
+}
 
-  const cv = $("#cv");
-  cv.addEventListener("pointerdown", down);
-  cv.addEventListener("pointermove", move);
-  cv.addEventListener("pointerup", up);
-  cv.addEventListener("pointerleave", up);
-  cv.addEventListener("pointercancel", up);
-  updateTouchAction(); // set correct touch-action right away based on current pen-only state
+function updateMarker() {
+  const b = $("#marker"); if (!b) return;
+  b.classList.toggle("on", markerOn);
+  b.textContent = "marker " + (markerOn ? "on" : "off");
 }
 
 function updatePenOnly() {
@@ -694,6 +2707,7 @@ function setupCanvas() {
 function drawStroke(ctx, s) {
   const pts = s.points;
   if (!pts || !pts.length) return;
+  ctx.globalAlpha = s.hl ? 0.35 : 1; // marker strokes are translucent so text shows through
   ctx.globalCompositeOperation = s.erase ? "destination-out" : "source-over";
   ctx.strokeStyle = s.erase ? "rgba(0,0,0,1)" : s.color;
   ctx.fillStyle   = s.erase ? "rgba(0,0,0,1)" : s.color;
@@ -702,6 +2716,7 @@ function drawStroke(ctx, s) {
     ctx.arc(pts[0].x, pts[0].y, (s.size * (0.5 + pts[0].p)) / 2, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalCompositeOperation = "source-over";
+    ctx.globalAlpha = 1;
     return;
   }
   for (let i = 1; i < pts.length; i++) {
@@ -721,6 +2736,7 @@ function drawStroke(ctx, s) {
   ctx.lineTo(last.x, last.y);
   ctx.stroke();
   ctx.globalCompositeOperation = "source-over";
+  ctx.globalAlpha = 1;
 }
 
 // redraws ALL committed strokes onto the base canvas — called on load, undo, clear, and stroke commit
@@ -758,25 +2774,41 @@ function ptFrom(e) {
 const blocked = (e) => penOnly && e.pointerType === "touch";
 
 function down(e) {
-  if (e.pointerType === "pen" && !penSeen) { penSeen = true; penOnly = true; updatePenOnly(); }
+  if (mode !== "draw") {
+    // pencil touching the note while writing = start drawing, right now, no menu digging:
+    // flip to draw mode (toolbar included) and fall through so THIS tap already draws.
+    // preventDefault stops the tap from also focusing a text block underneath.
+    if (e.pointerType === "pen" && $("#noteScroll") && active && !localFile) {
+      e.preventDefault();
+      setMode("draw");
+    } else return; // fingers/mouse in text mode: normal scrolling, tapping, selecting
+  }
+  if (e.pointerType === "pen" && !penSeen) { penSeen = true; setPenOnly(true); updatePenOnly(); }
   if (blocked(e)) {
+    // preventDefault even though we're not drawing — a finger/palm held still (not dragging) is
+    // exactly a long-press to iOS, and without this it fires the native Copy/Share/Look Up callout
+    // over the canvas regardless of touch-action, since that's a separate gesture recognizer
+    e.preventDefault();
     // finger down → stop any existing momentum and start fresh scroll tracking
     if (scrollRaf) { cancelAnimationFrame(scrollRaf); scrollRaf = null; }
     fingerY = e.clientY;
     scrollVel = 0;
-    scrollEl = document.querySelector(".canvas-scroll");
+    scrollEl = document.querySelector(".canvas-scroll") || $("#noteScroll"); // legacy view or unified surface
     return;
   }
   e.preventDefault();
   $("#cv").setPointerCapture(e.pointerId);
   drawing = true;
-  // pick size from eraser sizes or pen sizes depending on current mode
-  const strokeSize = erasing ? ERASER_SIZES[eraserSizeIdx].v : SIZES[sizeIdx].v;
-  cur = { erase: erasing, color: PENS[penIdx].c, size: strokeSize, points: [ptFrom(e)] };
+  // pick size from eraser sizes or pen sizes depending on current mode;
+  // marker strokes go extra wide (real highlighters are fat) and render translucent
+  const strokeSize = erasing ? ERASER_SIZES[eraserSizeIdx].v : (markerOn ? SIZES[sizeIdx].v * 3.2 : SIZES[sizeIdx].v);
+  cur = { erase: erasing, hl: !erasing && markerOn, color: PENS[penIdx].c, size: strokeSize, points: [ptFrom(e)] };
   clearLive(); // start the live canvas fresh for this stroke
 }
 function move(e) {
+  if (mode !== "draw" && !drawing) return; // unified surface: text mode is none of our business
   if (blocked(e)) {
+    e.preventDefault();
     if (fingerY !== null && scrollEl) {
       scrollVel = fingerY - e.clientY;
       scrollEl.scrollTop += scrollVel;
@@ -811,23 +2843,35 @@ function up() {
   if (!drawing) return;
   drawing = false;
   if (liveRaf) { cancelAnimationFrame(liveRaf); liveRaf = null; }
-  if (cur && cur.points.length) { active.strokes = (active.strokes || []).concat([cur]); scheduleSave(); }
+  if (cur && cur.points.length) {
+    active.strokes = (active.strokes || []).concat([cur]);
+    strokeRedo = []; // a fresh stroke invalidates the redo branch, same rule as text undo
+    scheduleSave();
+  }
   cur = null;
   redraw();    // bake the committed stroke into the base canvas
   clearLive(); // wipe the live canvas — stroke is now on the base
 }
 
-window.addEventListener("resize", () => { if (mode === "draw") setupCanvas(); });
-window.addEventListener("orientationchange", () => { if (mode === "draw") setTimeout(setupCanvas, 200); });
+window.addEventListener("resize", () => { if ($("#noteScroll")) sizeInkCanvas(); else if (mode === "draw") setupCanvas(); });
+window.addEventListener("orientationchange", () => { setTimeout(() => { if ($("#noteScroll")) sizeInkCanvas(); else if (mode === "draw") setupCanvas(); }, 200); });
 
 /* ---- render: statusline ---- */
 function renderStatus() {
   const meta = { normal: ["NORMAL", "m-normal"], insert: ["INSERT", "m-insert"], draw: ["DRAW", "m-draw"] }[mode];
   const words = active && active.body.trim() ? active.body.trim().split(/\s+/).length : 0;
   const chars = active ? active.body.length : 0;
+  // to-do progress for the open note \u2014 count "- [ ]" / "- [x]" lines straight off the markdown
+  const todoTotal = active ? (active.body.match(/^\s*- \[[ xX]\]/gm) || []).length : 0;
+  const todoDone = active ? (active.body.match(/^\s*- \[[xX]\]/gm) || []).length : 0;
   let right;
-  if (mode === "draw") right = '<span class="seg dim hide-sm">' + PENS[penIdx].name + " \u00B7 " + SIZES[sizeIdx].l + '</span>';
-  else right = '<span class="seg dim hide-sm">' + words + "w " + chars + "c</span>";
+  if (mode === "draw") {
+    const tool = erasing ? "eraser" : markerOn ? "marker" : SIZES[sizeIdx].l;
+    right = '<span class="seg dim hide-sm">' + PENS[penIdx].name + " \u00B7 " + tool + '</span>';
+  } else {
+    right = '<span class="seg dim hide-sm">' + words + "w " + chars + "c" +
+      (todoTotal ? " \u00B7 " + todoDone + "/" + todoTotal + " \u2713" : "") + '</span>';
+  }
   let sync;
   if (!online) sync = '<span class="led led-y"></span> offline';
   else if (saveStatus === "saving") sync = '<span class="led led-y"></span> saving';
@@ -845,12 +2889,117 @@ function renderStatus() {
 /* ---- keyboard (NORMAL-mode shortcuts) ---- */
 window.addEventListener("keydown", (e) => {
   const el = document.activeElement;
-  const typing = el && (el.tagName === "TEXTAREA" || el.tagName === "INPUT");
-  if (e.key === "Escape") { const ed = $("#ed"); if (ed) ed.blur(); mode = "normal"; renderBar(); renderStatus(); return; }
-  if (typing || mode === "insert" || e.metaKey || e.ctrlKey || e.altKey) return;
-  if (e.key === "i" && active) { e.preventDefault(); mode = "insert"; renderMain(); renderBar(); renderStatus(); focusEditor(); }
-  else if (e.key === "d" && active) { e.preventDefault(); mode = "draw"; renderMain(); renderBar(); renderStatus(); }
+  // block editor text blocks are contenteditable divs/spans, not TEXTAREA/INPUT — without this,
+  // single-letter shortcuts below (i/d/o) would steal keystrokes typed into a block whenever mode
+  // hadn't already flipped to "insert" (e.g. clicking straight into a block instead of pressing i first)
+  const typing = el && (el.tagName === "TEXTAREA" || el.tagName === "INPUT" || el.isContentEditable);
+
+  // command palette — works everywhere, even mid-typing, like Cmd/Ctrl-K in most editors
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); openPalette(); return; }
+
+  // Ctrl/Cmd-S flushes the pending autosave immediately (muscle memory deserves to work)
+  if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "s") {
+    e.preventDefault(); if (active) { lcSaveNote(active); lcMarkPending(active.id); saveNow(); } return;
+  }
+
+  // Ctrl/Cmd-E toggles between writing and drawing on the shared canvas
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "e") {
+    e.preventDefault(); if (active) setMode(mode === "draw" ? "insert" : "draw"); return;
+  }
+
+  // Ctrl/Cmd-Z / Ctrl/Cmd-Shift-Z (or Ctrl-Y): our own undo/redo. In draw mode it walks
+  // strokes; in text mode it walks body snapshots. Plain textareas (code blocks, legacy
+  // editor) keep the browser's native undo — those either stopPropagation before this runs
+  // or get skipped here explicitly.
+  if ((e.metaKey || e.ctrlKey) && (e.key.toLowerCase() === "z" || e.key.toLowerCase() === "y")) {
+    if (el && el.tagName === "TEXTAREA") return; // native textarea undo is better — leave it alone
+    e.preventDefault();
+    const redo = e.key.toLowerCase() === "y" || e.shiftKey;
+    if (mode === "draw") { redo ? redoStroke() : undoStroke(); }
+    else { redo ? doRedo() : doUndo(); }
+    return;
+  }
+
+  if (e.key === "Escape") {
+    const dropdown = $("#paletteDropdown");
+    if (dropdown && !dropdown.hidden) { closePalette(); const si = $("#searchBarInput"); if (si) si.blur(); return; }
+    const scrim = $("#modalScrim");
+    if (scrim && !scrim.hidden) { closeModal(); return; }
+    const blockHost = $("#blockEditor");
+    if (blockHost && blockHost.contains(document.activeElement)) document.activeElement.blur();
+    const ed = $("#ed"); if (ed) ed.blur();
+    setMode("normal"); return;
+  }
+  // single-letter shortcuts only bail while actually typing somewhere — being "in insert
+  // mode" with nothing focused (tapped out of a block) shouldn't kill the whole keymap
+  if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key === "i" && active) { e.preventDefault(); setMode("insert"); }
+  else if (e.key === "d" && active) { e.preventDefault(); setMode("draw"); }
   else if (e.key === "o") { e.preventDefault(); newNote(); }
+  else if (e.key === "?") { e.preventDefault(); openShortcutHelp(); }
+});
+
+/* ---- keyboard shortcuts help ("?" or via palette) ---- */
+function openShortcutHelp() {
+  const rows = [
+    ["Ctrl/Cmd K", "search notes + commands"],
+    ["Ctrl/Cmd Z", "undo (text or ink)"],
+    ["Ctrl/Cmd Shift Z", "redo"],
+    ["Ctrl/Cmd S", "save now"],
+    ["Ctrl/Cmd E", "toggle draw / write"],
+    ["Ctrl/Cmd B / I", "bold / italic (selection)"],
+    ["Ctrl/Cmd Shift X", "strikethrough (selection)"],
+    ["Ctrl/Cmd D", "duplicate block"],
+    ["Ctrl/Cmd Enter", "check / uncheck to-do"],
+    ["Ctrl/Cmd Alt 0-3", "paragraph / heading 1-3"],
+    ["Alt ↑ / ↓", "move block up / down"],
+    ["Tab / Shift Tab", "indent / outdent list item"],
+    ["↑ / ↓ at block edge", "jump between blocks"],
+    ["/", "block menu (start of a line)"],
+    ["[[", "link to another note"],
+    ["# ## ### - 1. > ```", "type + space to convert block"],
+    ["i / d / o", "insert · draw · new note (when not typing)"],
+    ["Esc", "back to normal mode"],
+    ["?", "this help"],
+  ];
+  const scrim = $("#modalScrim");
+  scrim.innerHTML =
+    '<div class="modal wide"><h2 style="color:var(--blue)">keyboard shortcuts</h2>' +
+    rows.map((r) => '<div class="sc-row"><kbd>' + esc(r[0]) + "</kbd><span>" + esc(r[1]) + "</span></div>").join("") +
+    '<div class="row2"><button class="cancel" id="scClose">close</button></div></div>';
+  scrim.hidden = false;
+  $("#scClose").onclick = closeModal;
+  scrim.onclick = (e) => { if (e.target === scrim) closeModal(); };
+}
+
+// clicking straight into any block should start typing there, not require pressing "i" first —
+// focusin bubbles, so one delegated listener covers every block type (heading/paragraph/list/
+// todo/quote/table-cell/toggle) without touching each one's own render function
+document.addEventListener("focusin", (e) => {
+  const blockHost = $("#blockEditor");
+  if (!blockHost || !blockHost.contains(e.target)) return;
+  // remember which block has focus — the keyboard bar acts on it even after its buttons
+  // briefly steal the tap (see currentBlock())
+  const wrap = e.target.closest("[data-id]");
+  if (wrap) curBlockId = wrap.dataset.id;
+  if (mode !== "insert" && mode !== "draw") {
+    mode = "insert";
+    renderBar(); renderStatus();
+  }
+});
+
+// tapping the empty space below the last block: if the last block already has content, start a
+// fresh paragraph there (what Notion does); if it's empty, just put the caret in it. Either way
+// the bottom of the page is real writing space, not a dead zone.
+document.addEventListener("click", (e) => {
+  if (mode === "draw" || !blocks.length) return;
+  if (e.target.id !== "blockEditor" && e.target.id !== "noteSurface") return;
+  const last = blocks[blocks.length - 1];
+  const lastEmpty = TEXT_TYPES.has(last.type) && !(last.text || "").trim();
+  if (lastEmpty) { focusBlock(last.id); return; }
+  const nb = { id: uid(), type: "p", text: "" };
+  blocks.push(nb);
+  syncBody(); renderEditorBlocks(); focusBlock(nb.id, 0);
 });
 
 $("#scrim").addEventListener("click", closeSidebar);
@@ -870,20 +3019,34 @@ setInterval(() => { if (!document.hidden && !online) loadList(); }, 3000);
 async function pollActiveNote() {
   if (!active || document.hidden || !online) return;
   if (Date.now() - lastTyped < 2000) return; // user is typing right now, skip to avoid clobbering
+  const polledId = active.id; // captured before the await — active can change while this is in flight
   try {
-    const fresh = await api("GET", "/api/notes/" + encodeURIComponent(active.id));
+    const fresh = await api("GET", "/api/notes/" + encodeURIComponent(polledId));
+    // the user can navigate to a different note (e.g. click a [[link]]) while this request is
+    // still in flight — without this check, a slow/stale response for the OLD note would land
+    // after the switch and silently overwrite the NEW note's displayed content with the old
+    // note's body. If the user then types anything, that gets autosaved — actually corrupting
+    // the new note's file with the old note's content. Same guard loadBacklinks() already has.
+    if (!active || active.id !== polledId) return;
     if (fresh.updated <= (active.updated || 0)) return; // nothing new
     active.updated = fresh.updated;
     active.title = fresh.title;
-    if (mode === "draw") {
-      // draw mode: update strokes if they changed
+    if (mode === "draw" && !$("#noteScroll")) {
+      // legacy draw view: only strokes are on screen
       active.strokes = fresh.strokes || [];
       redraw();
     } else {
-      // text mode: update editor if body changed
+      // unified surface shows ink at all times — pull stroke changes from other devices live
+      // (length compare is a cheap change detector: draw, undo and clear all change it)
+      if ((fresh.strokes || []).length !== (active.strokes || []).length) {
+        active.strokes = fresh.strokes || [];
+        if ($("#cv")) redraw();
+      }
+      // update editor if body changed
       if (fresh.body !== active.body) {
         active.body = fresh.body;
         const ed = $("#ed");
+        const blockHost = $("#blockEditor");
         if (ed && document.activeElement !== ed) {
           // only overwrite when user isn't focused in the textarea
           ed.value = fresh.body;
@@ -893,6 +3056,13 @@ async function pollActiveNote() {
           ed.value = fresh.body;
           ed.selectionStart = Math.min(start, fresh.body.length);
           ed.selectionEnd = Math.min(end, fresh.body.length);
+        } else if (blockHost) {
+          // block editor: a full re-render replaces every block's DOM node, so only do it
+          // when nothing inside is focused — otherwise just let the next poll pick it up
+          if (!blockHost.contains(document.activeElement)) {
+            blocks = parseBlocks(fresh.body);
+            renderEditorBlocks();
+          }
         }
       }
     }
@@ -917,8 +3087,11 @@ setInterval(pollActiveNote, 2000);
   if (cachedList.length) { notes = cachedList; renderList(); }
   renderBar(); renderStatus();
   await loadList(); // fetch from server (updates cache on success, sets offline flag on failure)
-  // open last active note, or first in list — fall back to local cache if server is down
-  const firstId = activeId || (notes[0] && notes[0].id);
+  // reopen the note you were last in (persisted per account in openNote), or first in list —
+  // fall back to local cache if server is down
+  const lastId = LC.get("glyph:" + ME + ":last");
+  const firstId = activeId ||
+    (lastId && notes.some((n) => n.id === lastId) ? lastId : (notes[0] && notes[0].id));
   if (firstId) {
     try { await openNote(firstId); }
     catch(e) { renderMain(); } // cached note not available either

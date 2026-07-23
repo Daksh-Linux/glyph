@@ -50,6 +50,9 @@ RESERVED_USERNAMES = {"api", "login", "signup", "static", "index", "assets"}
 SESSION_COOKIE = "glyph_session"
 SESSION_TTL = 60 * 60 * 24 * 30  # 30 days
 PBKDF2_ITERATIONS = 200_000
+MAX_BODY_SIZE = 2 * 1024 * 1024  # 2MB — plenty for a note or a form post; blocks someone
+                                  # sending a huge Content-Length to exhaust memory/CPU
+                                  # (e.g. a multi-GB "password" fed into PBKDF2) or bloat a vault
 LOCKOUT_THRESHOLD = 8       # failed logins from one IP before it's locked out
 LOCKOUT_SECONDS = 300
 SIGNUP_MAX_PER_HOUR = 5     # signups from one IP per hour — this is an open-signup
@@ -88,8 +91,12 @@ def load_users():
 
 
 def save_users(users):
-    with open(USERS_FILE, "w", encoding="utf-8") as f:
+    # write-then-rename so a crash/kill mid-write can never truncate/corrupt the one file
+    # that holds every account's credentials — os.replace is atomic on POSIX
+    tmp = USERS_FILE + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
         json.dump(users, f)
+    os.replace(tmp, USERS_FILE)
 
 
 def user_vault(username):
@@ -230,6 +237,12 @@ def save_contact_message(name, email, message, ip):
 # --- notes ------------------------------------------------------------
 FRONTMATTER = re.compile(r"^---\n(.*?)\n---\n?", re.DOTALL)
 UNSAFE_NAME = re.compile(r'[\\/:*?"<>|\x00-\x1f]')
+WIKILINK = re.compile(r"\[\[([^\]]+)\]\]")
+
+
+def extract_links(body):
+    """[[Some Title]] -> ["Some Title", ...], in the order they appear."""
+    return [m.strip() for m in WIKILINK.findall(body or "")]
 
 
 def slugify(title):
@@ -295,6 +308,27 @@ def find_path(vault, note_id):
     return None
 
 
+def backlinks(vault, note_id):
+    """Every note whose body links [[to the title of note_id]]. Resolution is
+    by title, same as Obsidian — a rename breaks incoming links, same as there."""
+    target_path = find_path(vault, note_id)
+    if not target_path:
+        return []
+    target_title = os.path.basename(target_path)[:-3].lower()
+    out = []
+    for path in md_files(vault):
+        if path == target_path:
+            continue
+        try:
+            note = parse(path, vault)
+        except OSError:
+            continue
+        titles = {t.lower() for t in extract_links(note["body"])}
+        if target_title in titles:
+            out.append({"id": note["id"], "title": note["title"]})
+    return out
+
+
 def unique_name(vault, title, note_id):
     base = slugify(title)
     candidate = base + ".md"
@@ -347,7 +381,25 @@ def read_note(vault, note_id):
     return note
 
 
+def would_create_cycle(vault, note_id, parent_id):
+    """True if note_id is already among parent_id's own ancestors — i.e. setting
+    note_id's parent to parent_id would close a loop. Walks up via each note's stored
+    parent, bounded by a visited set in case a cycle already exists in the data (e.g.
+    hand-edited frontmatter from Obsidian)."""
+    seen = set()
+    current = parent_id
+    while current and current not in seen:
+        if current == note_id:
+            return True
+        seen.add(current)
+        path = find_path(vault, current)
+        current = parse(path, vault).get("parent") if path else None
+    return False
+
+
 def write_note(vault, note_id, title, body, strokes, parent=None):
+    if parent and would_create_cycle(vault, note_id, parent):
+        parent = None  # refuse to create/preserve a parent cycle — drop to root instead
     old = find_path(vault, note_id)
     name = unique_name(vault, title, note_id)
     path = os.path.join(vault, name)
@@ -394,6 +446,11 @@ SEED = """\
 
 a terminal you can write in. plain text on the left, apple pencil on the right.
 
+## new version out
+
+a lot has been added since this note was first written — block editor,
+wiki-links, search, nested notes, and more. it's all below.
+
 ## modes
 
 - NORMAL  browse notes / run keys
@@ -401,6 +458,53 @@ a terminal you can write in. plain text on the left, apple pencil on the right.
 - DRAW    sketch with a pencil (key: d)
 - new note                     (key: o)
 - back to NORMAL               (key: esc)
+
+## writing
+
+type markdown shortcuts and they turn into real formatting as you go:
+
+- `# ` `## ` `### `  headings
+- `- `                bullet list
+- `1. `               numbered list
+- `- [ ] `            checkbox / to-do
+- `> `                quote
+- three backticks     code block
+
+select some text and press Cmd/Ctrl-B, -I, or -Shift-X for **bold**, *italic*,
+or ~~strikethrough~~. use the search bar (or Cmd/Ctrl-K) to insert a table,
+a toggle, or a divider — type "insert" to find them.
+
+## linking notes together
+
+type `[[` to link to another note — pick it from the popup as you go.
+click a link to jump straight there. any note that has links pointing to it
+shows "N notes link here" at the bottom, so you can find your way back.
+
+## nested notes
+
+click the + on a note in the sidebar to add a note inside it. notes with
+children get a ▸ arrow — click it to open them right there in the list,
+underneath their parent. the bar up top shows exactly where you are, e.g.
+Project X ❯ Sub note.
+
+## search
+
+click the search bar up top (or Cmd/Ctrl-K) to jump to any note or run a
+command — new note, switch theme, delete account, and more. your most
+recent notes show up first; type to filter everything.
+
+## draw mode
+
+sketch with Apple Pencil — pick a pen size and color, use the eraser, undo,
+or clear. "pen-only" is on by default so a palm resting on the screen while
+you write never draws, scrolls, or selects anything by accident.
+
+## local files
+
+open a file from this device (works in every browser) with "open file" in
+the sidebar, edit it, and save it back — in place if your browser allows it
+(Chrome/Brave/Edge), or as a downloaded copy otherwise (Safari/Firefox).
+"sync to glyph" turns it into a real note in your vault any time.
 
 ## sync
 
@@ -440,6 +544,19 @@ class Handler(BaseHTTPRequestHandler):
             return json.loads(raw or b"{}")
         except ValueError:
             return {}
+
+    def _reject_oversized(self):
+        """Checked before reading any request body — protocol_version defaults to HTTP/1.0
+        here (one connection per request), so refusing without draining the body is fine,
+        no keep-alive state to corrupt."""
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            length = 0
+        if length > MAX_BODY_SIZE:
+            self._json({"error": "request too large"}, 413)
+            return True
+        return False
 
     def _redirect(self, location):
         self.send_response(302)
@@ -555,6 +672,9 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"username": user})
         if path == "/api/notes":
             return self._json(list_meta(user_vault(user)))
+        match = re.match(r"^/api/notes/([^/]+)/backlinks$", path)
+        if match:
+            return self._json(backlinks(user_vault(user), unquote(match.group(1))))
         match = re.match(r"^/api/notes/([^/]+)$", path)
         if match:
             note = read_note(user_vault(user), unquote(match.group(1)))
@@ -563,6 +683,8 @@ class Handler(BaseHTTPRequestHandler):
         self._serve_static(path)
 
     def do_POST(self):
+        if self._reject_oversized():
+            return
         path = urlparse(self.path).path
         ip = self.client_address[0]
 
@@ -618,6 +740,8 @@ class Handler(BaseHTTPRequestHandler):
         self._json({"error": "not found"}, 404)
 
     def do_PUT(self):
+        if self._reject_oversized():
+            return
         user = self._current_user()
         if not user:
             return self._json({"error": "unauthorized"}, 401)
