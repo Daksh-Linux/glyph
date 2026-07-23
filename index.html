@@ -2445,6 +2445,22 @@ function renderInlineInto(el, text) {
   if (lastIndex < text.length) el.appendChild(document.createTextNode(text.slice(lastIndex)));
 }
 
+/* ---- paste-shape detection ----
+   Text copied out of Keep/Excel/a terminal is often column-aligned with runs of spaces
+   ("1.            1.               2"). Running that through the markdown parser turns
+   every "1." line into a numbered list and destroys the alignment. If enough lines are
+   indented, tabbed, or contain 3+ consecutive inner spaces, the paste is treated as
+   preformatted and lands in a code block — verbatim, monospaced, aligned forever. */
+function looksPreformatted(text) {
+  const lines = (text || "").replace(/\r/g, "").split("\n").filter((l) => l.trim());
+  if (lines.length < 2) return false;
+  let formatted = 0;
+  for (const l of lines) {
+    if (/^\s+\S/.test(l) || /\t/.test(l) || /\S\s{3,}\S/.test(l)) formatted++;
+  }
+  return formatted / lines.length >= 0.4;
+}
+
 /* ---- emoji shortcodes — type :fire: and get 🔥 the moment the closing : lands ---- */
 const EMOJI = {
   smile: "😄", joy: "😂", cry: "😢", sad: "😞", angry: "😠", cool: "😎", wink: "😉",
@@ -2786,6 +2802,16 @@ function renderBlockEl(b) {
       b.text = t.slice(0, sel.start) + "[" + t.slice(sel.start, sel.end) + "](" + url + ")" + t.slice(sel.end);
       syncBody(); renderEditorBlocks();
       focusBlock(b.id, sel.end + url.length + 4); // caret lands after the inserted )
+      return;
+    }
+    // column-aligned text (Keep tables, spreadsheets, terminal output) goes in VERBATIM
+    // as a code block — markdown parsing would shred the alignment (see looksPreformatted)
+    if (text.includes("\n") && looksPreformatted(text)) {
+      const i = blocks.findIndex((x) => x.id === b.id);
+      const nb = { id: uid(), type: "code", text: text.replace(/\r/g, "").replace(/\n+$/, ""), lang: "" };
+      if (TEXT_TYPES.has(b.type) && !(b.text || "").trim()) blocks.splice(i, 1, nb); // empty block: replace it
+      else blocks.splice(i + 1, 0, nb);
+      syncBody(); renderEditorBlocks();
       return;
     }
     // multi-line paste: don't cram newlines into one block — the first line joins this

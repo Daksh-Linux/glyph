@@ -877,9 +877,11 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/contact":
             # public on purpose — same reasoning as /legal
             return self._serve_static("contact.html")
-        if path == "/manifest.json" or path.startswith("/icons/"):
+        if path == "/manifest.json" or path == "/sw.js" or path.startswith("/icons/"):
             # public on purpose — favicons and the PWA manifest have to load on /login too,
-            # before anyone has a session. same for every visitor, nothing private in them.
+            # before anyone has a session. sw.js MUST be public: a logged-out device with a
+            # broken cached service worker can only heal itself by fetching the fixed one,
+            # and it can't log in through a broken worker. Nothing private in any of these.
             return self._serve_static(path)
         if path in ("/", "/index.html"):
             if not user:
