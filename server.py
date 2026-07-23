@@ -994,7 +994,9 @@ highlight it, recolor it, duplicate it, or delete it.
 
 ## planners & templates
 
-tap **+** and pick: daily planner, weekly planner, money planner, habit
+tap **+** and pick: **monthly tracker** (this month's name, a quote of
+the month, and a table with every date already filled down the first
+column — name the other columns yourself), daily planner, weekly planner, money planner, habit
 tracker, monthly calendar (a real calendar for this month), project
 tracker, travel planner, reading list, meal planner, workout log, study
 notes, weekly review — or save any note of yours as a template ("save

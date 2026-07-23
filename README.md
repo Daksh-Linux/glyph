@@ -38,7 +38,7 @@ Every "note-taking app" I tried wanted to sync my thoughts to someone else's ser
 - **Low-latency ink** — coalesced input samples, predicted-point rendering, and light position/pressure smoothing
 
 ### Planning (templates)
-- **New note from a template** — tap + and pick: daily planner, weekly planner, monthly calendar (generated for the actual month), money planner, habit tracker, goal tracker, project tracker, reading list, meal planner, workout log, travel planner, study notes, weekly review
+- **New note from a template** — tap + and pick: **monthly tracker** (the month as a heading, a quote-of-the-month box, and a table pre-filled with every date down the first column — add your own columns and rows), daily planner, weekly planner, monthly calendar (generated for the actual month), money planner, habit tracker, goal tracker, project tracker, reading list, meal planner, workout log, travel planner, study notes, weekly review
 - **Your own templates** — save any note as a template; it shows up in the + menu next to the built-ins
 - **Daily note** — one command opens (or creates) today's planner, Obsidian-style
 - **To-do progress** — the status bar counts your checkboxes ("3/7 ✓"), plus check/uncheck-all commands

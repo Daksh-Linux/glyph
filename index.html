@@ -1009,7 +1009,23 @@ function monthCalendarMarkdown(d) {
      ...rows.map((r) => "| " + r.join(" | ") + " |")].join("\n");
 }
 
+// A month page: the month as the heading, a quote box under it, and a table whose first
+// column is already filled in with every date of that month. The extra columns are left
+// blank on purpose — you name them yourself (habits, spends, workouts…) and the table's own
+// + buttons add as many rows and columns as you want.
+function monthTrackerMarkdown(d) {
+  d = d || new Date();
+  const monthName = d.toLocaleString("en", { month: "long" }).toLowerCase();
+  const days = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate(); // day 0 of next month
+  const rows = [];
+  for (let day = 1; day <= days; day++) rows.push("| " + day + " |  |  |");
+  return "# " + monthName + " " + d.getFullYear() + "\n\n" +
+    "> [!note] quote of the month\n> *the line you want to remember this month*\n\n" +
+    ["| date |  |  |", "| --- | --- | --- |"].concat(rows).join("\n");
+}
+
 const TEMPLATES = [
+  { name: "monthly tracker", body: () => monthTrackerMarkdown() },
   { name: "daily planner", body: () =>
     "# " + todayStr() + "\n\n## top 3\n\n- [ ] \n- [ ] \n- [ ] \n\n## schedule\n\n" +
     "| time | plan |\n| --- | --- |\n| 06:00 |  |\n| 09:00 |  |\n| 12:00 |  |\n| 15:00 |  |\n| 18:00 |  |\n| 21:00 |  |\n\n## notes\n" },
@@ -1995,6 +2011,8 @@ function paletteItemGroups() {
     { kind: "insert", label: "insert divider", run: () => { if (blockEditorEnabled()) insertBlockAtEnd({ id: uid(), type: "hr" }); } },
     { kind: "insert", label: "insert calendar (this month)", run: () => {
       if (blockEditorEnabled() && active) { parseBlocks(monthCalendarMarkdown()).forEach((b) => blocks.push(b)); syncBody(); renderEditorBlocks(); scheduleInkResize(); } } },
+    { kind: "insert", label: "insert month tracker table", run: () => {
+      if (blockEditorEnabled() && active) { parseBlocks(monthTrackerMarkdown()).forEach((b) => blocks.push(b)); syncBody(); renderEditorBlocks(); scheduleInkResize(); } } },
     { kind: "file", label: "open local file…", run: () => openLocalFile() },
     { kind: "danger", label: "delete current note", run: () => { if (active) removeNote(active.id); } },
     { kind: "danger", label: "log out", run: () => logout() },
@@ -3570,6 +3588,7 @@ const SLASH_ITEMS = [
   { label: "table", replace: () => ({ id: uid(), type: "table", header: ["a", "b"], rows: [["", ""]] }) },
   { label: "toggle", replace: () => ({ id: uid(), type: "toggle", text: "", body: "" }) },
   { label: "calendar (this month)", replaceMany: () => parseBlocks(monthCalendarMarkdown()) },
+  { label: "month tracker (dates table)", replaceMany: () => parseBlocks(monthTrackerMarkdown()) },
   { label: "today's date", apply: (b) => { b.type = "p"; b.text = todayStr(); } },
 ];
 
@@ -4910,7 +4929,8 @@ const HELP_SECTIONS = [
     ["daily note", "☀ in the sidebar — opens (or creates) today's planner"],
   ]},
   { title: "templates & planners", rows: [
-    ["built in", "+ new note → daily/weekly planner, money planner, habit tracker, monthly calendar, project tracker, travel, reading list, meals, workouts, study, weekly review"],
+    ["monthly tracker", "the month as a heading, a quote-of-the-month box, and a table with every date already down the first column — name the other columns yourself and use + to add more rows/columns"],
+    ["built in", "+ new note → monthly tracker, daily/weekly planner, money planner, habit tracker, monthly calendar, project tracker, travel, reading list, meals, workouts, study, weekly review"],
     ["your own", "palette → save note as template — appears in the + menu, × to remove"],
   ]},
   { title: "view & comfort", rows: [
