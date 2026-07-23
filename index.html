@@ -657,6 +657,8 @@ function readPenOnly() { try { return localStorage.getItem("glyph:penOnly") !== 
 function setPenOnly(v) { penOnly = v; try { localStorage.setItem("glyph:penOnly", v ? "1" : "0"); } catch (e) {} }
 let saveStatus = "saved";
 let saveTimer = null;
+let saveInFlight = false; // a PUT is on the wire right now
+let lastInked = 0;        // when the last pen stroke was committed (drawing's lastTyped)
 let ME = "";           // logged-in username, fetched from /api/me at boot
 let lastTyped = 0; // timestamp of last local keystroke — used to avoid clobbering in-progress typing during sync
 let markerOn = false;  // highlighter mode — translucent, wide strokes (like a real marker over text)
@@ -752,9 +754,15 @@ async function syncPending() {
     const note = lcLoadNote(id);
     if (!note) { lcClearPending(id); continue; }
     try {
-      const saved = await api("PUT", "/api/notes/" + encodeURIComponent(id),
-        { title: note.title, body: note.body, strokes: note.strokes || [],
-          parent: note.parent || null, pinned: !!note.pinned });
+      // strokes are only sent when the cached copy actually has some. localStorage writes
+      // can fail silently (quota — ink is bulky), which would leave a stale cache here;
+      // omitting the key makes the server keep the ink it already has. The cost is that a
+      // "clear ink" done while offline may not stick, which is trivially redone — unlike a
+      // lost drawing.
+      const payload = { title: note.title, body: note.body,
+        parent: note.parent || null, pinned: !!note.pinned };
+      if ((note.strokes || []).length) payload.strokes = note.strokes;
+      const saved = await api("PUT", "/api/notes/" + encodeURIComponent(id), payload);
       lcSaveNote({ ...note, updated: saved.updated });
       lcClearPending(id);
       if (active && active.id === id) { active.updated = saved.updated; }
@@ -870,6 +878,8 @@ function scheduleSave() {
 async function saveNow() {
   if (!active) return;
   clearTimeout(saveTimer);
+  saveTimer = null;   // cleared, not just stopped — pollActiveNote reads this to know
+  saveInFlight = true; // whether we still have unsaved work it must not overwrite
   try {
     const saved = await api("PUT", "/api/notes/" + encodeURIComponent(active.id),
       { title: active.title, body: active.body, strokes: active.strokes || [],
@@ -881,6 +891,8 @@ async function saveNow() {
   } catch(e) {
     setOnline(false);
     saveStatus = "offline"; renderStatus(); // show as offline, not error
+  } finally {
+    saveInFlight = false;
   }
 }
 
@@ -1469,8 +1481,9 @@ async function togglePinById(id) {
   if (active && active.id === id) { active.pinned = !active.pinned; scheduleSave(); await loadList(); return; }
   try {
     const n = await api("GET", "/api/notes/" + encodeURIComponent(id));
+    // no "strokes" key — pinning must never rewrite the ink (the server preserves it)
     await api("PUT", "/api/notes/" + encodeURIComponent(id),
-      { title: n.title, body: n.body, strokes: n.strokes || [], parent: n.parent || null, pinned: !n.pinned });
+      { title: n.title, body: n.body, parent: n.parent || null, pinned: !n.pinned });
   } catch (e) {}
   loadList();
 }
@@ -1720,8 +1733,9 @@ async function reparentNote(id, parentId) {
   } else {
     try {
       const n = await api("GET", "/api/notes/" + encodeURIComponent(id));
+      // no "strokes" key — re-parenting must never rewrite the ink
       await api("PUT", "/api/notes/" + encodeURIComponent(id),
-        { title: n.title, body: n.body, strokes: n.strokes || [], parent: parentId, pinned: !!n.pinned });
+        { title: n.title, body: n.body, parent: parentId, pinned: !!n.pinned });
     } catch (e) {}
   }
   if (parentId) expanded.add(parentId);
@@ -4618,6 +4632,7 @@ function up() {
   if (cur && cur.points.length) {
     active.strokes = (active.strokes || []).concat([cur]);
     strokeRedo = []; // a fresh stroke invalidates the redo branch, same rule as text undo
+    lastInked = Date.now(); // drawing's equivalent of lastTyped — keeps the poll off our back
     scheduleSave();
   }
   cur = null;
@@ -4903,6 +4918,12 @@ setInterval(() => { if (!document.hidden && !online) loadList(); }, 3000);
 async function pollActiveNote() {
   if (!active || document.hidden || !online) return;
   if (Date.now() - lastTyped < 2000) return; // user is typing right now, skip to avoid clobbering
+  if (Date.now() - lastInked < 3000) return; // ...and the same for drawing, which used to be
+                                             // missing entirely: strokes had no such guard
+  // Never let the server's copy overwrite local state while our own save is still queued or
+  // on the wire. Without this, a poll landing in that window replaces active.strokes with a
+  // pre-save version, and the NEXT autosave writes that loss back to disk permanently.
+  if (saveTimer || saveInFlight) return;
   const polledId = active.id; // captured before the await — active can change while this is in flight
   try {
     const fresh = await api("GET", "/api/notes/" + encodeURIComponent(polledId));

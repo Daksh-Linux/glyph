@@ -1,4 +1,4 @@
-const CACHE = "glyph-v19"; // bumped — causes browser to install fresh SW and drop old cache
+const CACHE = "glyph-v20"; // bumped — causes browser to install fresh SW and drop old cache
 const SHELL = ["/manifest.json", "/icons/192.png", "/icons/512.png"];
 
 self.addEventListener("install", e => {

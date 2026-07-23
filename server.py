@@ -463,20 +463,23 @@ def export_zip(vault):
 
 
 def read_note(vault, note_id):
-    path = find_path(vault, note_id)
-    if not path:
-        return None
-    note = parse(path, vault)
-    strokes = []
-    side = sidecar(vault, note["id"])
-    if os.path.exists(side):
-        try:
-            with open(side, encoding="utf-8") as f:
-                strokes = json.load(f)
-        except (OSError, ValueError):
-            strokes = []
-    note["strokes"] = strokes
-    return note
+    # under the same lock as write_note, so a note and its ink are always read as one
+    # consistent pair rather than straddling a concurrent save
+    with NOTE_LOCK:
+        path = find_path(vault, note_id)
+        if not path:
+            return None
+        note = parse(path, vault)
+        strokes = []
+        side = sidecar(vault, note["id"])
+        if os.path.exists(side):
+            try:
+                with open(side, encoding="utf-8") as f:
+                    strokes = json.load(f)
+            except (OSError, ValueError):
+                strokes = []
+        note["strokes"] = strokes
+        return note
 
 
 def would_create_cycle(vault, note_id, parent_id):
@@ -495,35 +498,60 @@ def would_create_cycle(vault, note_id, parent_id):
     return False
 
 
+# Notes are served by a ThreadingHTTPServer, so a GET (the client polls every 2s) really
+# does run in parallel with a PUT. Every note write is therefore serialized and made atomic:
+# a reader must only ever see the complete before-state or the complete after-state.
+NOTE_LOCK = threading.RLock()
+
+
+def _atomic_write(path, text):
+    """Write via a temp file + os.replace (atomic on POSIX). A plain open(path, "w")
+    truncates first, so a concurrent reader could observe an empty or half-written note."""
+    tmp = path + ".tmp"  # never matches md_files()/*.json listings, which check the suffix
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write(text)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, path)
+
+
 def write_note(vault, note_id, title, body, strokes, parent=None, pinned=False):
-    if parent and would_create_cycle(vault, note_id, parent):
-        parent = None  # refuse to create/preserve a parent cycle — drop to root instead
-    old = find_path(vault, note_id)
-    name = unique_name(vault, title, note_id)
-    path = os.path.join(vault, name)
-    header = "---\nid: %s\nupdated: %d\n" % (note_id, int(time.time()))
-    if parent:
-        header += "parent: %s\n" % parent
-    if pinned:
-        header += "pinned: true\n"
-    header += "---\n\n"
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(header + (body or ""))
-    if old and os.path.abspath(old) != os.path.abspath(path) and os.path.exists(old):
-        try:
-            os.remove(old)  # title changed -> rename by removing the old file
-        except OSError:
-            pass
-    side = sidecar(vault, note_id)
-    if strokes:
-        with open(side, "w", encoding="utf-8") as f:
-            json.dump(strokes, f, separators=(",", ":"))
-    elif os.path.exists(side):
-        try:
-            os.remove(side)
-        except OSError:
-            pass
-    return parse(path, vault)
+    """strokes=None means "leave the existing ink alone" — only an explicit list (including
+    an empty one, i.e. the user pressed clear) is allowed to modify or erase the sidecar."""
+    with NOTE_LOCK:
+        if parent and would_create_cycle(vault, note_id, parent):
+            parent = None  # refuse to create/preserve a parent cycle — drop to root instead
+        old = find_path(vault, note_id)
+        name = unique_name(vault, title, note_id)
+        path = os.path.join(vault, name)
+        header = "---\nid: %s\nupdated: %d\n" % (note_id, int(time.time()))
+        if parent:
+            header += "parent: %s\n" % parent
+        if pinned:
+            header += "pinned: true\n"
+        header += "---\n\n"
+
+        # ORDER MATTERS: the ink goes down first. The note file carries the `updated`
+        # timestamp the client compares against, so if it landed first a reader could catch
+        # the gap and see "newer note, older ink" — which is exactly how freshly drawn
+        # strokes used to get thrown away by the next poll and then deleted for good.
+        side = sidecar(vault, note_id)
+        if strokes is not None:
+            if strokes:
+                _atomic_write(side, json.dumps(strokes, separators=(",", ":")))
+            elif os.path.exists(side):
+                try:
+                    os.remove(side)
+                except OSError:
+                    pass
+
+        _atomic_write(path, header + (body or ""))
+        if old and os.path.abspath(old) != os.path.abspath(path) and os.path.exists(old):
+            try:
+                os.remove(old)  # title changed -> rename by removing the old file
+            except OSError:
+                pass
+        return parse(path, vault)
 
 
 # --- trash ------------------------------------------------------------
@@ -1011,7 +1039,10 @@ class Handler(BaseHTTPRequestHandler):
                 unquote(match.group(1)),
                 data.get("title", "untitled"),
                 data.get("body", ""),
-                data.get("strokes", []),
+                # a request that omits "strokes" entirely preserves the ink already on disk.
+                # Only an explicit list can change or clear it, so no client-side slip can
+                # ever silently wipe a drawing.
+                data.get("strokes"),
                 data.get("parent") or None,
                 bool(data.get("pinned")),
             )
