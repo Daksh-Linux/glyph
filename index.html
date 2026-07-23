@@ -348,6 +348,15 @@ body.zen .bar, body.zen .status, body.zen .kbar, body.zen .side, body.zen .backl
   body{background:#fff; color:#000;}
 }
 
+/* help center */
+.help-sec{border-bottom:1px solid var(--line2); padding:2px 0}
+.help-sec summary{padding:10px 2px; cursor:pointer; color:var(--text); font-size:13.5px; font-weight:600; list-style:revert}
+.help-sec summary::marker{color:var(--dim); font-size:10px}
+.help-sec .sc-row{border-bottom:none; padding:5px 0 5px 14px}
+.help-sec .sc-row kbd{flex:0 0 auto; max-width:45%; white-space:normal; text-align:left}
+.help-sec .sc-row span{flex:1; text-align:left; line-height:1.5}
+#helpFilter{margin-bottom:8px}
+
 /* keyboard-shortcuts help modal */
 .modal.wide{max-width:440px; max-height:80vh; overflow-y:auto}
 .sc-row{display:flex; justify-content:space-between; gap:14px; font-size:12.5px; padding:4px 0; border-bottom:1px solid var(--line2)}
@@ -1335,6 +1344,7 @@ function renderList() {
       '<button class="foot-row" id="graphRow"><span class="fic">◉</span>graph view</button>' +
       '<button class="foot-row" id="openFileRow" title="Open a file from this device"><span class="fic">▣</span>open file</button>' +
       (localFile ? '<button class="foot-row" id="syncGlyphRow" title="Copy the open file into a new note"><span class="fic">⇪</span>sync to glyph</button>' : "") +
+      '<button class="foot-row" id="helpRow"><span class="fic">?</span>help</button>' +
       '<button class="foot-row" id="moreToggle"><span class="fic">' + (sideMoreOpen ? "▾" : "▸") + "</span>more</button>" +
       (sideMoreOpen ?
         '<a class="foot-row" href="/legal" target="_blank" rel="noopener"><span class="fic">§</span>privacy &amp; terms</a>' +
@@ -1360,6 +1370,7 @@ function renderList() {
   $("#graphRow").onclick = () => { closeSidebar(); openGraphModal(); };
   $("#openFileRow").onclick = () => openLocalFile();
   const syncRow = $("#syncGlyphRow"); if (syncRow) syncRow.onclick = () => syncLocalFileToNote();
+  $("#helpRow").onclick = () => { closeSidebar(); openHelpModal(); };
   $("#moreToggle").onclick = () => { sideMoreOpen = !sideMoreOpen; renderList(); };
   const delBtn = $("#delAcctRow"); if (delBtn) delBtn.onclick = openDeleteAccountModal;
   const cs = $("#closeSide"); if (cs) cs.onclick = closeSidebar;
@@ -1787,7 +1798,8 @@ function paletteItemGroups() {
       run: () => { narrowPage = !narrowPage; setPref("narrowPage", narrowPage); applyEditorPrefs(); } },
     { kind: "action", label: spellcheckOn ? "disable spellcheck" : "enable spellcheck",
       run: () => { spellcheckOn = !spellcheckOn; setPref("spellcheck", spellcheckOn); if (active && mode !== "draw") renderEditorBlocks(); } },
-    { kind: "action", label: "keyboard shortcuts", run: () => openShortcutHelp() },
+    { kind: "action", label: "help & user guide", run: () => openHelpModal() },
+    { kind: "action", label: "keyboard shortcuts", run: () => openHelpModal() },
     { kind: "action", label: currentTheme() === "dark" ? "switch to light theme" : "switch to dark theme",
       run: () => { applyTheme(currentTheme() === "dark" ? "light" : "dark"); renderBar(); } },
     { kind: "beta", label: blockEditorEnabled() ? "disable block editor (beta)" : "enable block editor (beta)",
@@ -4163,44 +4175,131 @@ window.addEventListener("keydown", (e) => {
   if (e.key === "i" && active) { e.preventDefault(); setMode("insert"); }
   else if (e.key === "d" && active) { e.preventDefault(); setMode("draw"); }
   else if (e.key === "o") { e.preventDefault(); newNote(); }
-  else if (e.key === "?") { e.preventDefault(); openShortcutHelp(); }
+  else if (e.key === "?") { e.preventDefault(); openHelpModal(); }
 });
 
-/* ---- keyboard shortcuts help ("?" or via palette) ---- */
-function openShortcutHelp() {
-  const rows = [
-    ["Ctrl/Cmd K", "search notes + commands"],
-    ["Ctrl/Cmd Z", "undo (text or ink)"],
-    ["Ctrl/Cmd Shift Z", "redo"],
+/* ---- help center ("?" key, sidebar "help", or via palette) ----
+   Everything about the app in one searchable place: where things are, every feature,
+   how to do things, and the full shortcut list. Content is data (HELP_SECTIONS); the
+   filter box searches across every entry and auto-expands the sections that match. */
+const HELP_SECTIONS = [
+  { title: "getting around", rows: [
+    ["top bar", "☰ menu · search bar (notes, commands, full-text) · insert/draw switches · + new note · theme · log out"],
+    ["sidebar", "search, + new note, ☀ daily note, pinned notes, your note tree, and at the bottom: templates, trash, export, graph, open file, help"],
+    ["⋯ next to a note", "open · new note inside · pin · duplicate · move · copy link · download .md · delete"],
+    ["bar above the keyboard", "block types, bold/italic, indent, move block, undo/redo — floats on top of the phone keyboard"],
+    ["status bar", "current mode · note name · to-do progress (2/5 ✓) · word count · sync state"],
+    ["modes", "NORMAL (keys work) · INSERT (typing) · DRAW (pencil) — shown bottom-left"],
+  ]},
+  { title: "writing & blocks", rows: [
+    ["/ menu", "type / at the start of a line: headings, lists, to-dos, quote, callout, code, table, toggle, divider, calendar, today's date. Drag it by its ≡ grip; double-tap the grip to reset its spot"],
+    ["type to convert", "# to ###### headings · - bullet · 1. numbered · - [ ] to-do · > quote · > [!tip] callout · --- divider · ``` code"],
+    ["to-dos", "tap the checkbox, or Ctrl+Enter with the caret in it — the status bar counts them"],
+    ["tables", "Tab = next cell, Enter = next row (last row adds one), + buttons add rows/columns, × removes them"],
+    ["callouts", "colored note/tip/warning/danger boxes — tap the icon to change type, ▾ to fold"],
+    ["toggles", "collapsible sections — click the arrow, × to remove"],
+    ["code blocks", "language label, copy button, × to delete — Backspace when empty also removes it"],
+    ["move blocks", "drag the ⋮⋮ handle (desktop), Alt+↑/↓, or the ↑↓ toolbar buttons"],
+    ["empty space below", "tapping it starts a new paragraph there"],
+  ]},
+  { title: "formatting", rows: [
+    ["select text", "a floating toolbar appears: bold, italic, strike, code, highlight, or make it a [[link]]"],
+    ["inline syntax", "**bold** · *italic* · ~~strike~~ · `code` · ==highlight== · [text](url) · bare links · #tags"],
+    ["emoji", "type :fire: :idea: :check: :rocket: :100: … — swaps in as you close the colon"],
+    ["line break", "Shift+Enter inside a paragraph or quote"],
+  ]},
+  { title: "pasting", rows: [
+    ["from Keep / Excel / terminals", "column-aligned text pastes exactly as-is — alignment kept, never reshaped into lists"],
+    ["markdown or prose", "multi-line pastes become real blocks (headings, lists, tables all recognized)"],
+    ["url over selected text", "turns the selection into a link"],
+  ]},
+  { title: "drawing", rows: [
+    ["start drawing", "touch the page with an apple pencil — instantly, over your text. Or tap draw / press d"],
+    ["toolbar", "6 pen colors · 3 sizes · marker (translucent) · eraser · undo/redo · clear · done"],
+    ["palm rejection", "pen-only is on by default — a resting palm never draws; fingers scroll"],
+    ["stroke undo", "Ctrl+Z in draw mode, or the toolbar buttons"],
+  ]},
+  { title: "linking & finding", rows: [
+    ["[[ links", "type [[ and pick a note — click a link to jump there"],
+    ["backlinks & mentions", "bottom of a note shows who links here, and who mentions the title without linking"],
+    ["#tags", "tap any tag to search it across every note"],
+    ["search", "the top search bar looks INSIDE every note, with a snippet of the match"],
+    ["graph view", "sidebar → graph: every note as a dot, links as lines, tap to open"],
+    ["outline", "palette → outline: jump between a long note's headings"],
+    ["copy link to note", "⋯ menu or palette — the URL reopens that exact note"],
+  ]},
+  { title: "organizing", rows: [
+    ["pin", "⋯ menu → pin — pinned notes sit on top of the sidebar with a ★"],
+    ["nest", "⋯ menu → new note inside, or move into… any other note"],
+    ["trash", "deleted notes wait 30 days in sidebar → trash — restore or delete forever"],
+    ["sidebar sort", "palette → sort sidebar a-z / by recent · collapse or expand all folders"],
+    ["daily note", "☀ in the sidebar — opens (or creates) today's planner"],
+  ]},
+  { title: "templates & planners", rows: [
+    ["built in", "+ new note → daily/weekly planner, money planner, habit tracker, monthly calendar, project tracker, travel, reading list, meals, workouts, study, weekly review"],
+    ["your own", "palette → save note as template — appears in the + menu, × to remove"],
+  ]},
+  { title: "view & comfort", rows: [
+    ["zen mode", "palette → zen: nothing but the note (Esc leaves)"],
+    ["small text / narrow page / spellcheck", "palette toggles, remembered per device"],
+    ["theme", "sun/moon button in the top bar — light and dark"],
+    ["print / pdf", "palette → print — clean black-on-white layout"],
+  ]},
+  { title: "your data", rows: [
+    ["plain markdown", "notes are .md files in your private vault — Obsidian and Syncthing open them as-is"],
+    ["export", "sidebar → export vault (.zip), or ⋯ → download .md per note"],
+    ["offline", "every keystroke saves locally first, syncs when back online — live sync between your devices every 2s"],
+    ["note info & vault stats", "palette → words, blocks, reading time, totals across the vault"],
+    ["delete account", "sidebar → more → delete account — removes everything, no questions"],
+  ]},
+  { title: "keyboard shortcuts", rows: [
+    ["Ctrl/Cmd K (or P / O)", "search notes + commands"],
+    ["Ctrl/Cmd Z · Shift Z", "undo · redo (text, or ink in draw mode)"],
     ["Ctrl/Cmd S", "save now"],
     ["Ctrl/Cmd E", "toggle draw / write"],
     ["Ctrl/Cmd B / I", "bold / italic (selection)"],
     ["Ctrl/Cmd Shift X / H", "strikethrough / highlight (selection)"],
-    ["Shift Enter", "line break inside a paragraph"],
-    [":fire: :idea: :check:", "emoji shortcodes"],
     ["Ctrl/Cmd D", "duplicate block"],
-    ["Ctrl/Cmd Enter", "check / uncheck to-do"],
+    ["Ctrl/Cmd Enter", "check / uncheck a to-do"],
     ["Ctrl/Cmd Alt 0-3", "paragraph / heading 1-3"],
     ["Alt ↑ / ↓", "move block up / down"],
-    ["Tab / Shift Tab", "indent / outdent list item"],
+    ["Tab / Shift Tab", "indent / outdent list · next / previous table cell"],
+    ["Shift Enter", "line break in a paragraph"],
     ["↑ / ↓ at block edge", "jump between blocks"],
-    ["/", "block menu (start of a line)"],
-    ["[[", "link to another note"],
-    ["Tab / Enter in a table", "next cell / next row"],
-    ["# … ###### - 1. > --- ```", "type + space to convert block"],
-    ["> [!note] / [!tip] / [!warning]", "callout"],
+    ["Enter at block start", "push the block down a line"],
     ["i / d / o", "insert · draw · new note (when not typing)"],
-    ["Esc", "back to normal mode"],
+    ["Esc", "close menus / leave zen / back to normal"],
     ["?", "this help"],
-  ];
+  ]},
+];
+
+function openHelpModal() {
   const scrim = $("#modalScrim");
   scrim.innerHTML =
-    '<div class="modal wide"><h2 style="color:var(--blue)">keyboard shortcuts</h2>' +
-    rows.map((r) => '<div class="sc-row"><kbd>' + esc(r[0]) + "</kbd><span>" + esc(r[1]) + "</span></div>").join("") +
-    '<div class="row2"><button class="cancel" id="scClose">close</button></div></div>';
+    '<div class="modal wide"><h2 style="color:var(--blue)">help</h2>' +
+    '<input class="pick-input" id="helpFilter" placeholder="search help… (try: table, pin, paste, draw)">' +
+    HELP_SECTIONS.map((s, si) =>
+      '<details class="help-sec"' + (si === 0 ? " open" : "") + '><summary>' + esc(s.title) + "</summary>" +
+      s.rows.map((r) =>
+        '<div class="sc-row" data-h="' + esc((s.title + " " + r[0] + " " + r[1]).toLowerCase()) + '"><kbd>' + esc(r[0]) + "</kbd><span>" + esc(r[1]) + "</span></div>").join("") +
+      "</details>").join("") +
+    "</div>";
   scrim.hidden = false;
-  $("#scClose").onclick = closeModal;
   scrim.onclick = (e) => { if (e.target === scrim) closeModal(); };
+  const filter = $("#helpFilter");
+  filter.oninput = () => {
+    const q = filter.value.trim().toLowerCase();
+    scrim.querySelectorAll(".help-sec").forEach((sec, si) => {
+      let any = false;
+      sec.querySelectorAll(".sc-row").forEach((row) => {
+        const hit = !q || row.getAttribute("data-h").includes(q);
+        row.style.display = hit ? "" : "none";
+        if (hit) any = true;
+      });
+      sec.style.display = any ? "" : "none";
+      sec.open = q ? any : si === 0; // searching opens every matching section
+    });
+  };
 }
 
 // clicking straight into any block should start typing there, not require pressing "i" first —

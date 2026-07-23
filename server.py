@@ -658,7 +658,8 @@ just a note, so edit it, draw on it, or delete it whenever you like.
   note, theme toggle, log out
 - **sidebar** (☰ on a phone) — search, **+ new note**, ☀ today's daily
   note, your pinned notes, the note tree, and at the bottom: templates,
-  trash, export vault, graph view, open file
+  trash, export vault, graph view, open file, and **help** — the full
+  guide to everything, searchable
 - **⋯ next to any note** — open, add a note inside, pin, duplicate,
   move, copy link, download, delete
 - **bar above the keyboard** — every block type, bold/italic, indent,
@@ -730,8 +731,8 @@ folder and everything opens there too. download any note as .md or the
 whole vault as .zip from the sidebar. deleted notes wait in trash for 30
 days. no lock-in, no analytics, no third parties.
 
-press ? for the full keyboard shortcut list. start typing, or touch the
-page with a pencil.
+press ? — or open sidebar → help — for the searchable guide to every
+feature and shortcut. start typing, or touch the page with a pencil.
 """
 
 
