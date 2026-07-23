@@ -2358,7 +2358,7 @@ function renderInlineInto(el, text) {
   INLINE_RE.lastIndex = 0;
   let m;
   while ((m = INLINE_RE.exec(text))) {
-    if (m.index > lastIndex) el.appendChild(document.createTextNode(text.slice(lastIndex, m.index)));
+    if (m.index > lastIndex) el.appendChild(document.createTextNode(unescMd(text.slice(lastIndex, m.index))));
     if (m[1] !== undefined) {
       const title = m[1].trim(); // tolerate [[ title ]] typed by hand with stray spaces —
                                   // extract_links() on the server already does the same
@@ -2377,11 +2377,11 @@ function renderInlineInto(el, text) {
       el.appendChild(span);
     } else if (m[2] !== undefined) {
       const strong = document.createElement("strong");
-      strong.textContent = m[2];
+      strong.textContent = unescMd(m[2]);
       el.appendChild(strong);
     } else if (m[3] !== undefined) {
       const s = document.createElement("s");
-      s.textContent = m[3];
+      s.textContent = unescMd(m[3]);
       el.appendChild(s);
     } else if (m[4] !== undefined) {
       // `inline code` — styled span, still plain text underneath
@@ -2392,7 +2392,7 @@ function renderInlineInto(el, text) {
     } else if (m[5] !== undefined) {
       // ==highlight== — Obsidian's syntax, renders as a real <mark>
       const mk = document.createElement("mark");
-      mk.textContent = m[5];
+      mk.textContent = unescMd(m[5]);
       el.appendChild(mk);
     } else if (m[6] !== undefined) {
       // [text](url) markdown link — only http(s) urls become clickable, anything else
@@ -2437,12 +2437,12 @@ function renderInlineInto(el, text) {
       el.appendChild(chip);
     } else if (m[10] !== undefined) {
       const em = document.createElement("em");
-      em.textContent = m[10];
+      em.textContent = unescMd(m[10]);
       el.appendChild(em);
     }
     lastIndex = INLINE_RE.lastIndex;
   }
-  if (lastIndex < text.length) el.appendChild(document.createTextNode(text.slice(lastIndex)));
+  if (lastIndex < text.length) el.appendChild(document.createTextNode(unescMd(text.slice(lastIndex))));
 }
 
 /* ---- paste-shape detection ----
@@ -2461,6 +2461,34 @@ function looksPreformatted(text) {
   return formatted / lines.length >= 0.4;
 }
 
+// Escapes the markdown block-markers at the start of a line ("1." "-" "#" ">" "|" "```")
+// so the line stays ORDINARY TEXT forever — "1\." can never turn into a numbered list on
+// reload. The backslashes are the standard markdown escape (Obsidian renders them away
+// too) and renderInlineInto hides them on screen, so the user just sees their text.
+function escapeMdLine(line) {
+  return line
+    .replace(/^(\s*)(\d+)\./, "$1$2\\.")
+    .replace(/^(\s*)(-{3,})(\s*)$/, "$1\\$2$3")
+    .replace(/^(\s*)([-*+])(\s)/, "$1\\$2$3")
+    .replace(/^(\s*)(#{1,6}\s)/, "$1\\$2")
+    .replace(/^(\s*)>/, "$1\\>")
+    .replace(/^(\s*)(```)/, "$1\\$2")
+    .replace(/^(\s*)\|/, "$1\\|");
+}
+
+// hides escape backslashes in the rendered (blurred) view — display only, storage untouched
+function unescMd(s) {
+  return (s || "").replace(/\\([\\`*_#+\-.!>|~=\[\]()])/g, "$1");
+}
+
+// pasted column-aligned text as plain paragraph blocks: every line escaped so nothing
+// re-parses as a list/heading/table, alignment preserved by pre-wrap + the mono font
+function preformattedBlocks(text) {
+  const escaped = (text || "").replace(/\r/g, "").replace(/\n+$/, "")
+    .split("\n").map(escapeMdLine).join("\n");
+  return parseBlocks(escaped); // yields only paragraphs — every marker is escaped
+}
+
 // A text block somehow ended up holding multiple lines (keyboard-chip paste, drag-drop,
 // autofill — anything that bypasses the paste event). Same treatment as a normal paste:
 // column-aligned content becomes ONE verbatim code block, everything else parses into
@@ -2468,13 +2496,9 @@ function looksPreformatted(text) {
 function handleMultilineInsertion(b, raw) {
   const i = blocks.findIndex((x) => x.id === b.id);
   if (i === -1) return;
-  if (looksPreformatted(raw)) {
-    const nb = { id: uid(), type: "code", text: raw, lang: "" };
-    blocks.splice(i, 1, nb);
-    syncBody(); renderEditorBlocks(); focusBlock(nb.id);
-    return;
-  }
-  const parsed = parseBlocks(raw);
+  // column-aligned content stays ordinary text — lines escaped so they never
+  // re-parse into lists/headings, alignment kept as-is (no code box)
+  const parsed = looksPreformatted(raw) ? preformattedBlocks(raw) : parseBlocks(raw);
   blocks.splice(i, 1, ...parsed);
   syncBody(); renderEditorBlocks();
   const last = parsed[parsed.length - 1];
@@ -2835,13 +2859,14 @@ function renderBlockEl(b) {
       focusBlock(b.id, sel.end + url.length + 4); // caret lands after the inserted )
       return;
     }
-    // column-aligned text (Keep tables, spreadsheets, terminal output) goes in VERBATIM
-    // as a code block — markdown parsing would shred the alignment (see looksPreformatted)
+    // column-aligned text (Keep tables, spreadsheets, terminal output) stays ordinary
+    // text with its alignment intact — each line's markdown markers are escaped so the
+    // parser can never reshape it into lists (see preformattedBlocks)
     if (text.includes("\n") && looksPreformatted(text)) {
       const i = blocks.findIndex((x) => x.id === b.id);
-      const nb = { id: uid(), type: "code", text: text.replace(/\r/g, "").replace(/\n+$/, ""), lang: "" };
-      if (TEXT_TYPES.has(b.type) && !(b.text || "").trim()) blocks.splice(i, 1, nb); // empty block: replace it
-      else blocks.splice(i + 1, 0, nb);
+      const nbs = preformattedBlocks(text);
+      if (TEXT_TYPES.has(b.type) && !(b.text || "").trim()) blocks.splice(i, 1, ...nbs); // empty block: replace it
+      else blocks.splice(i + 1, 0, ...nbs);
       syncBody(); renderEditorBlocks();
       return;
     }
