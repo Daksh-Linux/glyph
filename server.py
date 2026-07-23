@@ -1010,12 +1010,12 @@ export — if glyph can do it, it's in there.
 
 ## coming from google keep?
 
-sidebar → **import from keep**. get your export from takeout.google.com
-(press "deselect all", tick only Keep, create the export, download the
-.zip google emails you), then pick that file. your notes, checklists —
-ticks included — labels, and pinned notes all come across into one
-"google keep" folder. keep's trash is skipped, and lined-up text keeps
-its spacing. copy-paste works too.
+sidebar → **import from keep**. press "open google takeout" — it opens
+with Keep already ticked, so you just press **create export**. google
+emails you a .zip; come back and pick it. your notes, checklists — ticks
+included — labels, and pinned notes all come across into one "google
+keep" folder. keep's trash is skipped, and lined-up text keeps its
+spacing. copy-paste works too.
 
 ## your data is yours
 

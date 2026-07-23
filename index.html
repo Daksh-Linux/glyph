@@ -362,6 +362,18 @@ body.zen .bar, body.zen .status, body.zen .kbar, body.zen .side, body.zen .backl
   body{background:#fff; color:#000;}
 }
 
+/* two-step import wizard */
+.step{border:1px solid var(--line2); border-radius:9px; padding:12px; margin-top:12px}
+.step-head{display:flex; align-items:center; gap:9px; font-size:13px; color:var(--text); font-weight:600; margin-bottom:10px}
+.step-n{flex:0 0 20px; width:20px; height:20px; border-radius:50%; background:var(--sel-bg); color:var(--blue);
+  display:flex; align-items:center; justify-content:center; font-size:11.5px}
+.step-btn{text-decoration:none; display:flex}
+.step-note{font-size:11.5px; color:var(--dim); line-height:1.6; margin-top:9px}
+.dropzone{display:flex; align-items:center; justify-content:center; text-align:center; padding:18px 12px;
+  border:1px dashed var(--line); border-radius:8px; color:var(--dim); font-size:12.5px; cursor:pointer}
+.dropzone:hover, .dropzone.over{border-color:var(--blue); color:var(--text); background:var(--panel)}
+.dropzone.has-file{border-style:solid; border-color:var(--green); color:var(--green)}
+
 /* help center */
 .help-sec{border-bottom:1px solid var(--line2); padding:2px 0}
 .help-sec summary{padding:10px 2px; cursor:pointer; color:var(--text); font-size:13.5px; font-weight:600; list-style:revert}
@@ -1664,15 +1676,27 @@ function openNoteInfoModal() {
    Takeout gives you a .zip; the server unpacks it (stdlib zipfile) and turns every Keep
    note into a real glyph note. Everything lands in one dated folder note so a big import
    never floods the sidebar — and it can be moved or ungrouped afterwards like any note. */
+// Takeout's per-product deep link: opens the export page with Keep already the only thing
+// ticked, so the user just presses "Create export". If Google ever changes this, the page
+// still opens — the fallback line under the button tells them what to tick.
+const TAKEOUT_KEEP_URL = "https://takeout.google.com/settings/takeout/custom/keep";
+
 function openKeepImportModal() {
   const scrim = $("#modalScrim");
   scrim.innerHTML =
     '<div class="modal wide"><h2 style="color:var(--blue)">import from google keep</h2>' +
-    '<div class="sc-row"><kbd>1</kbd><span>open <b>takeout.google.com</b> and press "deselect all"</span></div>' +
-    '<div class="sc-row"><kbd>2</kbd><span>tick <b>Keep</b> only, then "next step" → "create export"</span></div>' +
-    '<div class="sc-row"><kbd>3</kbd><span>google emails you a .zip — download it</span></div>' +
-    '<div class="sc-row"><kbd>4</kbd><span>pick that .zip below</span></div>' +
-    '<input type="file" id="keepFile" accept=".zip,.tgz,.gz,application/zip" style="margin-top:14px">' +
+    '<div class="step">' +
+      '<div class="step-head"><span class="step-n">1</span>get your notes out of keep</div>' +
+      '<a class="btn-primary step-btn" href="' + TAKEOUT_KEEP_URL + '" target="_blank" rel="noopener">open google takeout →</a>' +
+      '<div class="step-note">keep should already be the only thing ticked — just scroll down and press ' +
+        '<b>create export</b>. (if anything else is ticked, press "deselect all" then tick keep.)<br>' +
+        'google emails you a .zip when it\'s ready — usually a few minutes.</div>' +
+    '</div>' +
+    '<div class="step">' +
+      '<div class="step-head"><span class="step-n">2</span>bring the .zip here</div>' +
+      '<label class="dropzone" id="keepDrop"><span id="keepDropText">choose the .zip google sent you</span>' +
+        '<input type="file" id="keepFile" accept=".zip,.tgz,.gz,application/zip" hidden></label>' +
+    '</div>' +
     '<div class="hint">notes, checklists (ticks and all), labels → #tags, pinned notes and ' +
     'archived notes all come across. notes in Keep\'s trash are skipped. your tables and ' +
     'lined-up text keep their spacing. nothing is sent anywhere except your own vault.</div>' +
@@ -1682,11 +1706,35 @@ function openKeepImportModal() {
   scrim.hidden = false;
   scrim.onclick = (e) => { if (e.target === scrim) closeModal(); };
   $("#keepCancel").onclick = closeModal;
+
+  // show the chosen filename, and accept a drag-and-dropped archive on desktop
+  const drop = $("#keepDrop"), input = $("#keepFile"), dropText = $("#keepDropText");
+  const showPicked = () => {
+    const f = input.files[0];
+    if (f) { dropText.textContent = f.name + " · " + Math.round(f.size / 1024) + " KB"; drop.classList.add("has-file"); }
+  };
+  input.onchange = showPicked;
+  ["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => {
+    e.preventDefault(); drop.classList.add("over");
+  }));
+  ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => {
+    e.preventDefault(); drop.classList.remove("over");
+  }));
+  drop.addEventListener("drop", (e) => {
+    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (!f) return;
+    // DataTransfer files can be assigned straight onto the input, so the submit path below
+    // stays identical whether the file was dropped or picked
+    const dt = new DataTransfer();
+    dt.items.add(f);
+    input.files = dt.files;
+    showPicked();
+  });
   $("#keepGo").onclick = async () => {
     const file = $("#keepFile").files[0];
     const err = $("#keepErr"), btn = $("#keepGo");
     err.classList.remove("show");
-    if (!file) { err.textContent = "pick your takeout .zip first"; err.classList.add("show"); return; }
+    if (!file) { err.textContent = "choose the .zip google sent you (step 2)"; err.classList.add("show"); return; }
     btn.disabled = true; btn.textContent = "importing…";
     try {
       // one folder note to hold the import, created first so the notes can nest under it
@@ -4862,7 +4910,7 @@ const HELP_SECTIONS = [
     ["print / pdf", "palette → print — clean black-on-white layout"],
   ]},
   { title: "coming from google keep", rows: [
-    ["import everything", "sidebar → import from keep. Get your export at takeout.google.com (deselect all, tick Keep), then pick the .zip"],
+    ["import everything", "sidebar → import from keep: press \"open google takeout\" (opens with Keep already ticked), press create export, then pick the .zip google emails you"],
     ["what comes across", "notes, checklists with their ticks, labels → #tags, pinned notes, archived notes (tagged #archived)"],
     ["what doesn't", "notes in Keep's trash are skipped; images aren't supported yet, so attachments are listed by name"],
     ["where it lands", "one \"google keep\" folder in the sidebar — move notes out of it whenever you like"],
